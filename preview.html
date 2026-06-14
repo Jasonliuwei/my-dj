@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My DJ · 界面预览（离线 Demo）</title>
+<style>
+  :root{--fg:#f3f1ff;--muted:#a9a4c9;--accent:#7c5cff;--accent2:#ff5c8a;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);}
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{font-family:-apple-system,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:var(--fg);
+    background:linear-gradient(160deg,#0f0c29,#302b63,#24243e);background-attachment:fixed;}
+  .banner{max-width:520px;margin:0 auto;padding:10px 18px;color:var(--muted);font-size:12px;text-align:center;line-height:1.6;}
+  .app{max-width:520px;margin:0 auto;min-height:100%;padding:0 18px 40px;display:flex;flex-direction:column;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 0;}
+  .brand{font-weight:800;font-size:20px;}
+  nav button{background:none;border:none;color:var(--muted);font-size:14px;padding:6px 10px;cursor:pointer;border-radius:20px;}
+  nav button.on{color:#fff;background:var(--card);}
+  .home{padding-top:20px;}
+  .hero{font-size:32px;line-height:1.25;font-weight:800;margin:8px 0;}
+  .sub{color:var(--muted);margin:0 0 22px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .scene{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:22px 18px;border-radius:20px;border:1px solid var(--line);
+    background:var(--card);color:var(--fg);cursor:pointer;transition:transform .12s,background .2s;}
+  .scene:active{transform:scale(.97);} .scene:hover{background:rgba(255,255,255,.1);}
+  .scene .emoji{font-size:30px;} .scene .label{font-size:16px;font-weight:600;}
+  .player{display:flex;flex-direction:column;align-items:center;padding-top:6px;text-align:center;}
+  .back{align-self:flex-start;background:none;border:none;color:var(--muted);font-size:15px;cursor:pointer;padding:4px 0;}
+  .scene-chip{color:var(--muted);font-size:14px;margin:4px 0 18px;}
+  .cover{width:240px;height:240px;border-radius:50%;overflow:hidden;border:6px solid rgba(255,255,255,.08);
+    box-shadow:0 20px 60px rgba(124,92,255,.35);background:#1a1830;display:grid;place-items:center;}
+  .cover-fallback{font-size:60px;}
+  .cover.spin{animation:spin 18s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .meta{margin:22px 0 8px;} .title{font-size:22px;font-weight:700;} .artist{color:var(--muted);margin-top:6px;}
+  .dj-bubble{background:linear-gradient(120deg,rgba(124,92,255,.25),rgba(255,92,138,.25));border:1px solid var(--line);
+    border-radius:18px;padding:14px 16px;margin:14px 4px;max-width:460px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+  .dj-tag{background:var(--accent);color:#fff;font-size:12px;font-weight:700;padding:2px 8px;border-radius:10px;}
+  .dj-text{flex:1;min-width:200px;text-align:left;line-height:1.5;}
+  .lyric{color:#e7e3ff;margin:18px 0;min-height:24px;font-size:16px;}
+  .controls{display:flex;align-items:center;gap:26px;margin-top:26px;}
+  .icon{width:56px;height:56px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:#fff;font-size:22px;
+    cursor:pointer;display:grid;place-items:center;transition:transform .1s;} .icon:active{transform:scale(.9);}
+  .icon.big{width:72px;height:72px;font-size:28px;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;}
+  .icon.liked{border-color:var(--accent2);}
+  .panel{padding-top:10px;} .panel h2{font-size:22px;}
+  .row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);}
+  .row .t{font-weight:600;} .row .a{color:var(--muted);font-size:13px;margin-top:2px;}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 20px;}
+  .tag{background:var(--accent);color:#fff;padding:6px 12px;border-radius:16px;font-size:13px;}
+  .tag.soft{background:var(--card);color:var(--fg);border:1px solid var(--line);}
+  .muted{color:var(--muted);} h4{margin:16px 0 4px;}
+</style>
+</head>
+<body>
+<div class="banner">⚠️ 离线预览：声音来自<b>你电脑里的系统语音</b>（不是真实版的拟人 AI 音色），且没有真实歌曲。下面可切换语音、调语速试试。</div>
+<div style="max-width:520px;margin:0 auto 4px;padding:0 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);">
+  <label>语音</label>
+  <select id="voiceSel" style="background:rgba(255,255,255,.08);color:#f3f1ff;border:1px solid var(--line);border-radius:8px;padding:4px 8px;max-width:240px;"></select>
+  <label>语速</label>
+  <input id="rate" type="range" min="0.7" max="1.2" step="0.05" value="0.95" />
+</div>
+<div class="app">
+  <div class="topbar">
+    <div class="brand">🎧 My DJ</div>
+    <nav>
+      <button data-v="player" class="nv on">电台</button>
+      <button data-v="fav" class="nv">收藏</button>
+      <button data-v="stats" class="nv">我的口味</button>
+    </nav>
+  </div>
+  <div id="screen"></div>
+</div>
+
+<script>
+var scenes=[
+  {k:'focus',l:'专注工作',e:'🎯'},{k:'workout',l:'运动燃脂',e:'🔥'},{k:'chill',l:'放松解压',e:'🌿'},
+  {k:'night',l:'深夜电台',e:'🌙'},{k:'drive',l:'路上开车',e:'🚗'},{k:'happy',l:'元气满满',e:'☀️'}
+];
+var pool={
+  focus:[{t:'Weightless',a:'Marconi Union'},{t:'夜的钢琴曲五',a:'石进'},{t:'River Flows in You',a:'Yiruma'}],
+  workout:[{t:'Stronger',a:'Kanye West'},{t:'Titanium',a:'David Guetta'},{t:'燃',a:'GAI'}],
+  chill:[{t:'Plastic Love',a:'竹内玛利亚'},{t:'晴天',a:'周杰伦'},{t:'The Girl from Ipanema',a:'Stan Getz'}],
+  night:[{t:'她说',a:'林俊杰'},{t:'夜空中最亮的星',a:'逃跑计划'},{t:'Nightcall',a:'Kavinsky'}],
+  drive:[{t:'Take It Easy',a:'Eagles'},{t:'兜风',a:'蛋堡'},{t:'September',a:'Earth, Wind & Fire'}],
+  happy:[{t:'Happy',a:'Pharrell Williams'},{t:'小幸运',a:'田馥甄'},{t:'Dynamite',a:'BTS'}]
+};
+var djLines={
+  focus:['嘿，欢迎回到你的专属电台。我把外面的世界先帮你调成了静音模式。接下来这一首很安静，没有多余的鼓点，就让它陪你慢慢进入状态。深呼吸，我们开始。',
+    '又见面啦。看你最近总在专注模式里，我特意挑了这首干净的曲子。不打扰你，需要换一首随时按下一首就好。走起。'],
+  workout:['好，能量拉满！心率准备好了吗？接下来这一首节奏会越来越猛，跟上它，别让自己停下来。三、二、一，燃起来！',
+    '别松劲儿啊。我知道这会儿最难熬，所以下一首我给你换了首更带劲的。把它当成你的燃脂引擎，冲！'],
+  chill:['慢一点，真的没关系。今天辛苦了。接下来这首我特别喜欢，旋律很软，像有人轻轻拍你的肩膀。把自己交给它就好。',
+    '给你倒杯热的，靠着歇会儿。下面这首很适合发呆，不用想任何事，听就行了。'],
+  night:['夜深了，这座城市安静下来，现在这里只剩你和音乐。接下来这首很走心，如果今天有点累，就让它替你说说话吧。',
+    '睡前的最后一首，我把声音调得很轻。别熬太晚啦，听完这首就好好休息。晚安。'],
+  drive:['路在前方，油箱满，歌也管够。接下来这首特别适合此刻的公路，跟着哼起来，今天的路就不孤单了。',
+    '把车窗摇下来一点，让风进来。下一首给你的旅途加点料，注意安全，我们继续往前开。'],
+  happy:['今天也要元气满满呀！接下来这首一响起来，心情立刻就亮了。来，跟我一起把音量调大一点，唱出来！',
+    '看到你就觉得今天会是好日子。下面这首超级上头，准备好你的好心情，我们继续嗨！']
+};
+var lyrics=['♪ ……','此刻的旋律，刚刚好','让耳朵放个假','下一句，留给你自己哼'];
+
+var view='player',scene=null,idx=0,liked=false,playing=false,timer=null,lyrTimer=null;
+var screen=document.getElementById('screen');
+
+document.querySelector('nav').addEventListener('click',function(e){
+  var b=e.target.closest('.nv'); if(!b)return; view=b.dataset.v;
+  document.querySelectorAll('.nv').forEach(function(x){x.classList.toggle('on',x.dataset.v===view);});
+  stopAll(); render();
+});
+var curDj='';
+var PREFER=['Tingting','Ting-Ting','Mei-Jia','Sinji','Yu-shu','Yaoyao','Huihui','Kangkang','Xiaoxiao','Yunxi','Google 普通话','Google 国语'];
+function populateVoices(){
+  if(!('speechSynthesis' in window))return;
+  var sel=document.getElementById('voiceSel'); if(!sel)return;
+  var vs=speechSynthesis.getVoices();
+  var zh=vs.filter(function(v){return /zh|Chinese|普通话|Mandarin|国语|粤/i.test(v.lang+' '+v.name);});
+  var list=zh.length?zh:vs;
+  if(!list.length)return;
+  if(sel.options.length===list.length)return;
+  sel.innerHTML='';
+  list.forEach(function(v,i){var o=document.createElement('option');o.value=v.name;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o);});
+  for(var p=0;p<PREFER.length;p++){var hit=list.findIndex(function(v){return v.name.indexOf(PREFER[p])>=0;});if(hit>=0){sel.value=list[hit].name;break;}}
+}
+if('speechSynthesis' in window){populateVoices();speechSynthesis.onvoiceschanged=populateVoices;}
+function stopAll(){playing=false;clearTimeout(timer);clearInterval(lyrTimer);try{speechSynthesis.cancel();}catch(e){}}
+function speak(txt){
+  if(!('speechSynthesis' in window)){alert('当前浏览器不支持网页语音，建议用 Chrome 打开');return;}
+  curDj=txt;
+  try{
+    speechSynthesis.cancel();
+    setTimeout(function(){
+      var u=new SpeechSynthesisUtterance(txt);u.lang='zh-CN';u.volume=1;
+      var r=document.getElementById('rate'); u.rate=r?parseFloat(r.value):0.95;
+      var vs=speechSynthesis.getVoices();
+      var sel=document.getElementById('voiceSel');
+      var chosen=sel&&sel.value?vs.find(function(v){return v.name===sel.value;}):null;
+      if(!chosen)chosen=vs.find(function(v){return /zh|Chinese|Mandarin|普通话|国语/i.test(v.lang+' '+v.name);});
+      if(chosen)u.voice=chosen;
+      speechSynthesis.speak(u);
+    },140);
+  }catch(e){}
+}
+function chooseScene(k){scene=k;idx=0;render();startTrack();}
+function startTrack(){stopAll();liked=false;var tr=pool[scene][idx%pool[scene].length];var dj=djLines[scene][idx%djLines[scene].length];
+  renderPlayer({dj:true,track:tr,djText:dj});speak(dj);
+  timer=setTimeout(function(){playing=true;renderPlayer({dj:false,track:tr});cycleLyric();},3400);}
+function cycleLyric(){var i=0;lyrTimer=setInterval(function(){var e=document.getElementById('lyric');if(!e){clearInterval(lyrTimer);return;}e.textContent=lyrics[i%lyrics.length];i++;},2200);}
+function next(){idx++;startTrack();}
+function toggle(){playing=!playing;if(!playing){clearInterval(lyrTimer);try{speechSynthesis.cancel();}catch(e){}}else{cycleLyric();}renderCtrls();}
+
+function render(){if(view==='player'){scene?renderPlayer({dj:false,track:pool[scene][idx%pool[scene].length]}):renderHome();}
+  else if(view==='fav')renderFav();else renderStats();}
+
+function renderHome(){
+  var h='<div class="home"><div class="hero">此刻，<br>想听点什么？</div><div class="sub">选一个场景，你的专属 DJ 就开播</div><div class="grid">';
+  scenes.forEach(function(s){h+='<button class="scene" data-k="'+s.k+'"><span class="emoji">'+s.e+'</span><span class="label">'+s.l+'</span></button>';});
+  h+='</div></div>'; screen.innerHTML=h;
+  screen.querySelectorAll('.scene').forEach(function(b){b.onclick=function(){chooseScene(b.dataset.k);};});
+}
+function renderPlayer(st){
+  var sc=scenes.find(function(x){return x.k===scene;}),tr=st.track;
+  var spin=(playing&&!st.dj)?' spin':'';
+  var mid=st.dj
+    ?'<div class="dj-bubble"><span class="dj-tag">DJ</span><span class="dj-text">'+st.djText+'</span></div>'
+    :'<div id="lyric" class="lyric">♪ ……</div>';
+  screen.innerHTML='<div class="player"><button class="back" id="back">‹ 场景</button>'+
+    '<div class="scene-chip">'+sc.e+' '+sc.l+'</div>'+
+    '<div class="cover'+spin+'"><div class="cover-fallback">🎵</div></div>'+
+    '<div class="meta"><div class="title">'+tr.t+'</div><div class="artist">'+tr.a+'</div></div>'+
+    mid+
+    '<button class="back" id="replay" style="align-self:center;margin-top:6px;">🔊 重新播报主持人</button>'+
+    '<div id="ctrls"></div></div>';
+  document.getElementById('back').onclick=function(){stopAll();scene=null;render();};
+  document.getElementById('replay').onclick=function(){speak(curDj||djLines[scene][idx%djLines[scene].length]);};
+  if(st.dj)curDj=st.djText;
+  renderCtrls();
+}
+function renderCtrls(){var el=document.getElementById('ctrls');if(!el)return;
+  el.innerHTML='<div class="controls"><button class="icon'+(liked?' liked':'')+'" id="like">'+(liked?'❤️':'🤍')+'</button>'+
+    '<button class="icon big" id="pp">'+(playing?'⏸':'▶')+'</button>'+
+    '<button class="icon" id="nx">⏭</button></div>';
+  document.getElementById('like').onclick=function(){liked=!liked;renderCtrls();};
+  document.getElementById('pp').onclick=toggle; document.getElementById('nx').onclick=next;
+}
+function renderFav(){
+  screen.innerHTML='<div class="panel"><h2>我的收藏</h2>'+
+    [['晴天','周杰伦'],['她说','林俊杰'],['Plastic Love','竹内玛利亚']].map(function(p){
+      return '<div class="row"><div><div class="t">'+p[0]+'</div><div class="a">'+p[1]+'</div></div><span style="color:#ff5c8a;">❤️</span></div>';}).join('')+'</div>';
+}
+function renderStats(){
+  screen.innerHTML='<div class="panel"><h2>我的口味画像</h2><p class="muted">累计播放 128 首 · 喜欢 37 次</p>'+
+    '<h4>偏爱歌手</h4><div class="tags">'+['周杰伦','林俊杰','Yiruma','逃跑计划'].map(function(t){return '<span class="tag">'+t+'</span>';}).join('')+'</div>'+
+    '<h4>关键词</h4><div class="tags">'+['钢琴','抒情','深夜','治愈','华语'].map(function(t){return '<span class="tag soft">'+t+'</span>';}).join('')+'</div></div>';
+}
+render();
+</script>
+</body>
+</html>

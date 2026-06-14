@@ -1,0 +1,15 @@
+# deps
+node_modules/
+# builds
+frontend/dist/
+# env & secrets
+.env
+*.local
+# data & cache
+backend/data/*.db
+backend/data/cache/
+backend/data/music/*
+!backend/data/music/.gitkeep
+# logs & os
+*.log
+.DS_Store

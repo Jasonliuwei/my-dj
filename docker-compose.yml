@@ -1,0 +1,37 @@
+# My DJ 一键部署编排
+# 用法： docker compose up -d --build
+services:
+  # 网易云非官方 API（音源）
+  netease-api:
+    image: binaryify/netease_cloud_music_api:latest
+    container_name: mydj-netease-api
+    restart: unless-stopped
+    expose:
+      - "3000"
+
+  # 后端：电台/推荐/AI主持人/TTS
+  backend:
+    build: ./backend
+    container_name: mydj-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - BACKEND_PORT=4000
+      - NETEASE_API_BASE=http://netease-api:3000
+    volumes:
+      - ./backend/data:/app/data
+    depends_on:
+      - netease-api
+    expose:
+      - "4000"
+
+  # 前端：nginx 托管静态页 + 反代 /api 到后端
+  web:
+    build: ./frontend
+    container_name: mydj-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      - backend
