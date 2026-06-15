@@ -15,7 +15,7 @@ app.get('/api/health', (req, res) =>
     ok: true,
     source: sourceName,
     tts: config.ttsProvider,
-    qwen: config.dashscopeKey ? 'on' : 'template',
+    llm: (process.env.LLM_API_KEY || config.dashscopeKey) ? 'on' : 'template',
     time: Date.now(),
   })
 );

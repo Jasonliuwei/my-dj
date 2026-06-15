@@ -1,10 +1,11 @@
-// AI 主持人文案：阿里云百炼 通义千问（OpenAI 兼容接口）
-// 无 Key 时自动降级为本地模板，App 仍可正常使用
-import config from '../config.js';
+// AI 主持人文案：兼容任意 OpenAI 格式接口（DeepSeek / 通义千问 等）
+// 通过环境变量配置；无 Key 时自动降级为本地模板，App 仍可正常使用
 import { SCENES } from './scenes.js';
 
-const DASHSCOPE_URL =
-  'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+// 默认指向 DeepSeek；也可换成通义千问等任意 OpenAI 兼容服务
+const BASE = (process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
+const KEY = process.env.LLM_API_KEY || process.env.DASHSCOPE_API_KEY || '';
+const MODEL = process.env.LLM_MODEL || process.env.QWEN_MODEL || 'deepseek-chat';
 
 function templateScript({ scene, track, prevTrack }) {
   const s = SCENES[scene] || {};
@@ -19,7 +20,7 @@ function templateScript({ scene, track, prevTrack }) {
 }
 
 export async function djScript({ scene, track, prevTrack }) {
-  if (!config.dashscopeKey) {
+  if (!KEY) {
     return templateScript({ scene, track, prevTrack });
   }
   const s = SCENES[scene] || {};
@@ -33,14 +34,14 @@ export async function djScript({ scene, track, prevTrack }) {
     `请用一句简短的串场词自然地引出这首歌。`;
 
   try {
-    const res = await fetch(DASHSCOPE_URL, {
+    const res = await fetch(`${BASE}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.dashscopeKey}`,
+        Authorization: `Bearer ${KEY}`,
       },
       body: JSON.stringify({
-        model: config.qwenModel,
+        model: MODEL,
         messages: [
           { role: 'system', content: sys },
           { role: 'user', content: user },
@@ -49,12 +50,12 @@ export async function djScript({ scene, track, prevTrack }) {
         max_tokens: 120,
       }),
     });
-    if (!res.ok) throw new Error(`dashscope ${res.status}`);
+    if (!res.ok) throw new Error(`llm ${res.status}`);
     const data = await res.json();
     const text = data?.choices?.[0]?.message?.content?.trim();
     return text || templateScript({ scene, track, prevTrack });
   } catch (e) {
-    console.error('[llm] qwen failed, fallback to template:', e.message);
+    console.error('[llm] request failed, fallback to template:', e.message);
     return templateScript({ scene, track, prevTrack });
   }
 }
