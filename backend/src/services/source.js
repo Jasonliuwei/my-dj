@@ -9,10 +9,16 @@ async function jget(url) {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.json();
 }
+// 归一化 Cookie：用户可能只粘了 MUSIC_U 的值，自动补上前缀
+const RAW_COOKIE = (config.neteaseCookie || '').trim();
+const COOKIE = RAW_COOKIE
+  ? (RAW_COOKIE.includes('MUSIC_U') ? RAW_COOKIE : `MUSIC_U=${RAW_COOKIE}`)
+  : '';
+
 function withCookie(url) {
-  if (!config.neteaseCookie) return url;
+  if (!COOKIE) return url;
   const sep = url.includes('?') ? '&' : '?';
-  return `${url}${sep}cookie=${encodeURIComponent(config.neteaseCookie)}`;
+  return `${url}${sep}cookie=${encodeURIComponent(COOKIE)}`;
 }
 
 // ====================================================================
@@ -109,8 +115,18 @@ const localProvider = {
 // 网易云：拉取「我喜欢的音乐」并标注可播放性（需 netease 音源 + Cookie）
 // ====================================================================
 async function neteaseUserId() {
-  const data = await jget(withCookie(`${NB()}/user/account`));
-  return data?.account?.id || data?.profile?.userId || null;
+  const ts = Date.now();
+  try {
+    const a = await jget(withCookie(`${NB()}/user/account?timestamp=${ts}`));
+    const id = a?.account?.id || a?.profile?.userId;
+    if (id) return id;
+  } catch {}
+  // 备用：登录状态接口
+  try {
+    const s = await jget(withCookie(`${NB()}/login/status?timestamp=${ts}`));
+    return s?.data?.profile?.userId || s?.profile?.userId || null;
+  } catch {}
+  return null;
 }
 
 export async function neteaseLikes(limit = 500) {
@@ -122,7 +138,7 @@ export async function neteaseLikes(limit = 500) {
   const uid = await neteaseUserId();
   if (!uid) return { error: 'not_logged_in', message: 'Cookie 无效或已过期，请重新获取' };
 
-  const likeData = await jget(withCookie(`${NB()}/likelist?uid=${uid}`));
+  const likeData = await jget(withCookie(`${NB()}/likelist?uid=${uid}&timestamp=${Date.now()}`));
   let ids = (likeData?.ids || []).map(String);
   const total = ids.length;
   if (limit > 0) ids = ids.slice(0, limit);
