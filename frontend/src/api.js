@@ -49,4 +49,7 @@ export const api = {
 
   stats: () => j('/api/stats').then((r) => r.json()),
   health: () => j('/api/health').then((r) => r.json()),
+
+  neteaseLikes: () => j('/api/netease/likes').then((r) => r.json()),
+  trackUrl: (id) => j('/api/track-url?id=' + encodeURIComponent(id)).then((r) => r.json()),
 };

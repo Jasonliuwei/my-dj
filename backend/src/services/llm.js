@@ -4,7 +4,7 @@ import { SCENES } from './scenes.js';
 
 // 默认指向 DeepSeek；也可换成通义千问等任意 OpenAI 兼容服务
 const BASE = (process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1').replace(/\/$/, '');
-const KEY = process.env.LLM_API_KEY || process.env.DASHSCOPE_API_KEY || '';
+const KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || '';
 const MODEL = process.env.LLM_MODEL || process.env.QWEN_MODEL || 'deepseek-chat';
 
 function templateScript({ scene, track, prevTrack }) {

@@ -15,7 +15,7 @@ app.get('/api/health', (req, res) =>
     ok: true,
     source: sourceName,
     tts: config.ttsProvider,
-    llm: (process.env.LLM_API_KEY || config.dashscopeKey) ? 'on' : 'template',
+    llm: config.llmKey ? 'on' : 'template',
     time: Date.now(),
   })
 );
@@ -29,5 +29,5 @@ app.use('/api', library);
 
 app.listen(config.port, () => {
   console.log(`\n🎧 My DJ backend running on :${config.port}`);
-  console.log(`   音源=${sourceName}  TTS=${config.ttsProvider}  Qwen=${config.dashscopeKey ? 'on' : 'template(无Key)'}\n`);
+  console.log(`   音源=${sourceName}  TTS=${config.ttsProvider}  DeepSeek=${config.llmKey ? 'on' : 'template(无Key)'}\n`);
 });

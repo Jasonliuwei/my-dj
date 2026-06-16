@@ -15,8 +15,9 @@ export const config = {
   neteaseApiBase: process.env.NETEASE_API_BASE || 'http://localhost:3000',
   neteaseCookie: process.env.NETEASE_COOKIE || '',
 
-  dashscopeKey: process.env.DASHSCOPE_API_KEY || '',
-  qwenModel: process.env.QWEN_MODEL || 'qwen-plus',
+  llmKey: process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || '',
+  llmModel: process.env.LLM_MODEL || 'deepseek-chat',
+  llmBaseUrl: process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1',
 
   ttsProvider: process.env.TTS_PROVIDER || 'edge',
   edgeVoice: process.env.EDGE_TTS_VOICE || 'zh-CN-XiaoxiaoNeural',

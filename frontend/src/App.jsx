@@ -4,6 +4,7 @@ import { speakBrowser, parseLrc } from './voice.js';
 import SceneGrid from './components/SceneGrid.jsx';
 import Player from './components/Player.jsx';
 import Panel from './components/Panel.jsx';
+import NeteaseLikes from './components/NeteaseLikes.jsx';
 
 export default function App() {
   const [scenes, setScenes] = useState([]);
@@ -129,6 +130,7 @@ export default function App() {
         <nav>
           <button className={view === 'player' ? 'on' : ''} onClick={() => setView('player')}>电台</button>
           <button className={view === 'favorites' ? 'on' : ''} onClick={openFavorites}>收藏</button>
+          <button className={view === 'netease' ? 'on' : ''} onClick={() => setView('netease')}>网易云收藏</button>
           <button className={view === 'stats' ? 'on' : ''} onClick={openStats}>我的口味</button>
         </nav>
       </header>
@@ -168,6 +170,8 @@ export default function App() {
             ))}
         </Panel>
       )}
+
+      {view === 'netease' && <NeteaseLikes />}
 
       {view === 'stats' && (
         <Panel title="我的口味画像">

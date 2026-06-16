@@ -106,6 +106,60 @@ const localProvider = {
 };
 
 // ====================================================================
+// 网易云：拉取「我喜欢的音乐」并标注可播放性（需 netease 音源 + Cookie）
+// ====================================================================
+async function neteaseUserId() {
+  const data = await jget(withCookie(`${NB()}/user/account`));
+  return data?.account?.id || data?.profile?.userId || null;
+}
+
+export async function neteaseLikes(limit = 500) {
+  if (config.musicSource !== 'netease')
+    return { error: 'not_netease', message: '当前音源不是网易云，无法读取收藏' };
+  if (!config.neteaseCookie)
+    return { error: 'no_cookie', message: '服务器未配置网易云 Cookie' };
+
+  const uid = await neteaseUserId();
+  if (!uid) return { error: 'not_logged_in', message: 'Cookie 无效或已过期，请重新获取' };
+
+  const likeData = await jget(withCookie(`${NB()}/likelist?uid=${uid}`));
+  let ids = (likeData?.ids || []).map(String);
+  const total = ids.length;
+  if (limit > 0) ids = ids.slice(0, limit);
+
+  // 批量取歌曲详情
+  const meta = {};
+  for (let i = 0; i < ids.length; i += 200) {
+    const batch = ids.slice(i, i + 200).join(',');
+    try {
+      const d = await jget(withCookie(`${NB()}/song/detail?ids=${batch}`));
+      for (const s of d?.songs || []) meta[String(s.id)] = normalizeSong(s);
+    } catch {}
+  }
+  // 批量判断可播放性
+  const playable = {};
+  for (let i = 0; i < ids.length; i += 100) {
+    const batch = ids.slice(i, i + 100).join(',');
+    try {
+      const d = await jget(withCookie(`${NB()}/song/url/v1?id=${batch}&level=standard`));
+      for (const it of d?.data || []) playable[String(it.id)] = !!it.url;
+    } catch {}
+  }
+
+  const songs = ids.map((id) => ({
+    ...(meta[id] || { id, title: '(未知歌曲)', artist: '', cover: '', album: '', duration: 0 }),
+    playable: !!playable[id],
+  }));
+  return {
+    uid,
+    total,
+    shown: songs.length,
+    playableCount: songs.filter((s) => s.playable).length,
+    songs,
+  };
+}
+
+// ====================================================================
 const provider = config.musicSource === 'local' ? localProvider : neteaseProvider;
 
 export const search = (kw, limit) => provider.search(kw, limit);

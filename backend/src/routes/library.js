@@ -31,4 +31,24 @@ router.delete('/favorites/:id', (req, res) => {
 
 router.get('/stats', (req, res) => res.json(stats()));
 
+// 网易云「我喜欢的音乐」
+router.get('/netease/likes', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit || '500', 10);
+    res.json(await source.neteaseLikes(limit));
+  } catch (e) {
+    res.status(500).json({ error: 'server_error', message: e.message });
+  }
+});
+
+// 解析单曲播放地址（收藏列表里点播放用）
+router.get('/track-url', async (req, res) => {
+  try {
+    const url = await source.getUrl(req.query.id);
+    res.json({ url });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 export default router;
