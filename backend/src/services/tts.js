@@ -33,6 +33,43 @@ export async function synthesize(text) {
     }
   }
 
+  if (config.ttsProvider === 'eleven') {
+    try {
+      const voice = process.env.ELEVEN_VOICE_ID;
+      const key = process.env.ELEVEN_API_KEY;
+      const model = process.env.ELEVEN_MODEL || 'eleven_multilingual_v2';
+      if (!voice || !key) {
+        console.warn('[tts] eleven 缺少 ELEVEN_VOICE_ID 或 ELEVEN_API_KEY');
+        return null;
+      }
+      const res = await fetch(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`,
+        {
+          method: 'POST',
+          headers: {
+            'xi-api-key': key,
+            'Content-Type': 'application/json',
+            Accept: 'audio/mpeg',
+          },
+          body: JSON.stringify({
+            text,
+            model_id: model,
+            voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.3 },
+          }),
+        }
+      );
+      if (!res.ok) {
+        const msg = await res.text().catch(() => '');
+        throw new Error(`eleven ${res.status} ${msg.slice(0, 120)}`);
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      return { buffer: buf, contentType: 'audio/mpeg' };
+    } catch (e) {
+      console.error('[tts] eleven failed:', e.message);
+      return null; // 前端兜底
+    }
+  }
+
   if (config.ttsProvider === 'dashscope') {
     // 占位：阿里云 CosyVoice 升级位。需要时按官方文档接入，
     // 失败则返回 null 由前端浏览器语音兜底。
