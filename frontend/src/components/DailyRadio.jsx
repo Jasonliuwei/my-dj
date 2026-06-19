@@ -45,6 +45,7 @@ export default function DailyRadio() {
   const musicRef = useRef(null);
   const djAudioRef = useRef(null);
   const tokenRef = useRef(0);
+  const prefetchRef = useRef(null); // 预取的下一首:{ i, djText, url }
 
   const stopVoice = () => {
     if (djAudioRef.current) { djAudioRef.current.pause(); djAudioRef.current.onended = null; }
@@ -79,6 +80,22 @@ export default function DailyRadio() {
     if (token === tokenRef.current) setSpeaking(false);
   }, []);
 
+  // 后台预取某一首的串场词 + 语音,存到 prefetchRef,切歌时直接用
+  const prefetch = useCallback(async (i, arr) => {
+    if (!arr || i < 0 || i >= arr.length) return;
+    if (prefetchRef.current && prefetchRef.current.i === i) return; // 已在预取/已就绪
+    prefetchRef.current = { i, djText: '', url: undefined }; // 占位:进行中
+    try {
+      const d = await api.djIntro(arr[i], i > 0 ? arr[i - 1] : null);
+      const text = d.djText || '';
+      let url = null;
+      try { url = await api.tts(text); } catch { url = null; }
+      if (prefetchRef.current && prefetchRef.current.i === i) prefetchRef.current = { i, djText: text, url };
+    } catch {
+      if (prefetchRef.current && prefetchRef.current.i === i) prefetchRef.current = null;
+    }
+  }, []);
+
   const playIndex = useCallback(async (i, list) => {
     const token = tokenRef.current;
     const arr = list || tracks;
@@ -91,15 +108,29 @@ export default function DailyRadio() {
     if (el) el.pause(); // 停掉上一首
     setPlaying(false);
 
-    // 1) 取串场词
+    // 取串场词 + 语音:优先用预取好的(秒开),否则现取
     let intro = '';
-    try {
-      const data = await api.djIntro(t, prev);
-      if (token !== tokenRef.current) return;
-      intro = data.djText || '';
+    let url = null;
+    const pf = prefetchRef.current;
+    if (pf && pf.i === i && pf.url !== undefined) {
+      intro = pf.djText; url = pf.url; prefetchRef.current = null;
       setDjText(intro);
-    } catch { /* ignore */ }
-    if (token !== tokenRef.current) return;
+    } else {
+      try {
+        const data = await api.djIntro(t, prev);
+        if (token !== tokenRef.current) return;
+        intro = data.djText || '';
+        setDjText(intro);
+      } catch { /* ignore */ }
+      if (token !== tokenRef.current) return;
+      try {
+        url = await Promise.race([api.tts(intro), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 15000))]);
+      } catch { url = null; }
+      if (token !== tokenRef.current) return;
+    }
+
+    // 在本首播放期间,后台预取下一首 → 下次切歌秒开
+    prefetch(i + 1, arr);
 
     const startMusicNow = () => {
       if (!el || !t.url || el.dataset.cur === t.id) return;
@@ -108,14 +139,7 @@ export default function DailyRadio() {
       el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
     };
 
-    // 2) 取语音
-    let url = null;
-    try {
-      url = await Promise.race([api.tts(intro), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 15000))]);
-    } catch { url = null; }
-    if (token !== tokenRef.current) return;
-
-    // 3) 播 DJ 串场,并在结束前约 3.5s 让歌曲垫入(人声与音乐重叠,音量不变)
+    // 播 DJ 串场,并在结束前约 3.5s 让歌曲垫入(人声与音乐重叠,音量不变)
     setSpeaking(true);
     await new Promise((resolve) => {
       let done = false;
@@ -152,6 +176,7 @@ export default function DailyRadio() {
       if (!data.tracks || !data.tracks.length) { setError(data.message || '没能取到歌曲'); setPhase('error'); return; }
       setTracks(data.tracks);
       setPhase('onair');
+      prefetch(0, data.tracks); // 问候播放期间,后台预取第一首,减少开场后的等待
       await speak(data.greeting, token);
       if (token !== tokenRef.current) return;
       playIndex(0, data.tracks);
