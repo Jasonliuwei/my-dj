@@ -5,6 +5,7 @@ import SceneGrid from './components/SceneGrid.jsx';
 import Player from './components/Player.jsx';
 import Panel from './components/Panel.jsx';
 import NeteaseLikes from './components/NeteaseLikes.jsx';
+import DailyRadio from './components/DailyRadio.jsx';
 
 export default function App() {
   const [scenes, setScenes] = useState([]);
@@ -15,7 +16,7 @@ export default function App() {
   const [status, setStatus] = useState('home'); // home | loading | dj | playing | paused | error
   const [error, setError] = useState('');
   const [liked, setLiked] = useState(false);
-  const [view, setView] = useState('player'); // player | favorites | stats
+  const [view, setView] = useState('home'); // home | player | favorites | netease | stats
   const [favorites, setFavorites] = useState([]);
   const [stats, setStats] = useState(null);
 
@@ -128,12 +129,15 @@ export default function App() {
       <header className="topbar">
         <div className="brand">🎧 My DJ</div>
         <nav>
-          <button className={view === 'player' ? 'on' : ''} onClick={() => setView('player')}>电台</button>
+          <button className={view === 'home' ? 'on' : ''} onClick={() => setView('home')}>今日电台</button>
+          <button className={view === 'player' ? 'on' : ''} onClick={() => { setScene(null); setView('player'); }}>场景</button>
+          <button className={view === 'netease' ? 'on' : ''} onClick={() => setView('netease')}>网易云</button>
           <button className={view === 'favorites' ? 'on' : ''} onClick={openFavorites}>收藏</button>
-          <button className={view === 'netease' ? 'on' : ''} onClick={() => setView('netease')}>网易云收藏</button>
-          <button className={view === 'stats' ? 'on' : ''} onClick={openStats}>我的口味</button>
+          <button className={view === 'stats' ? 'on' : ''} onClick={openStats}>口味</button>
         </nav>
       </header>
+
+      {view === 'home' && <DailyRadio />}
 
       {view === 'player' && !scene && (
         <SceneGrid scenes={scenes} onPick={chooseScene} error={error} />

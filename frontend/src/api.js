@@ -52,4 +52,11 @@ export const api = {
 
   neteaseLikes: () => j('/api/netease/likes').then((r) => r.json()),
   trackUrl: (id) => j('/api/track-url?id=' + encodeURIComponent(id)).then((r) => r.json()),
+
+  daily: (n = 6) => j('/api/radio/daily?n=' + n).then((r) => r.json()),
+  djIntro: (track, prev) => {
+    const p = new URLSearchParams({ id: track.id, title: track.title || '', artist: track.artist || '' });
+    if (prev) { p.set('prevTitle', prev.title || ''); p.set('prevArtist', prev.artist || ''); }
+    return j('/api/dj/intro?' + p.toString()).then((r) => r.json());
+  },
 };

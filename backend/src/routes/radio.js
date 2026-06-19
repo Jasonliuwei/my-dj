@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { nextTrack, feedback, SCENES } from '../services/recommender.js';
-import { djScript } from '../services/llm.js';
+import { djScript, djGreeting } from '../services/llm.js';
 import * as source from '../services/source.js';
 import { logEvent } from '../db.js';
 
@@ -40,6 +40,44 @@ router.get('/radio/next', async (req, res) => {
   } catch (e) {
     console.error('[radio/next]', e);
     res.status(500).json({ error: 'server_error', message: e.message });
+  }
+});
+
+// 今日歌单：从「我喜欢的音乐」抽 n 首可播放 + 开场问候
+router.get('/radio/daily', async (req, res) => {
+  try {
+    const n = Math.min(Math.max(parseInt(req.query.n || '6', 10), 1), 12);
+    const tracks = await source.neteaseDailyPicks(n);
+    if (!tracks.length) {
+      return res.status(404).json({
+        error: 'no_tracks',
+        message: '没能从你的网易云收藏取到可播放的歌曲（请检查 Cookie 是否有效、收藏是否为空）',
+      });
+    }
+    const greeting = await djGreeting({ count: tracks.length });
+    res.json({ greeting, tracks });
+  } catch (e) {
+    console.error('[radio/daily]', e);
+    res.status(500).json({ error: 'server_error', message: e.message });
+  }
+});
+
+// 单曲串场（今日歌单逐首播放时调用）
+router.get('/dj/intro', async (req, res) => {
+  try {
+    const track = { id: req.query.id, title: req.query.title, artist: req.query.artist };
+    const prevTrack = req.query.prevTitle
+      ? { title: req.query.prevTitle, artist: req.query.prevArtist }
+      : null;
+    const [djText, lyric] = await Promise.all([
+      djScript({ scene: 'daily', track, prevTrack }),
+      req.query.id ? source.getLyric(req.query.id).catch(() => '') : Promise.resolve(''),
+    ]);
+    if (req.query.id)
+      logEvent({ trackId: req.query.id, title: track.title, artist: track.artist, action: 'play', scene: 'daily' });
+    res.json({ djText, lyric });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

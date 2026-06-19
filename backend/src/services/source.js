@@ -175,6 +175,50 @@ export async function neteaseLikes(limit = 500) {
   };
 }
 
+// 从「我喜欢的音乐」里快速抽 n 首可播放的歌（今日歌单用，只取小样本，秒级返回）
+export async function neteaseDailyPicks(n = 6) {
+  if (config.musicSource !== 'netease' || !COOKIE) return [];
+  const uid = await neteaseUserId();
+  if (!uid) return [];
+
+  const likeData = await jget(withCookie(`${NB()}/likelist?uid=${uid}&timestamp=${Date.now()}`));
+  let ids = (likeData?.ids || []).map(String);
+  if (!ids.length) return [];
+
+  // 洗牌后只取一个小候选池（n*4），避免拉全量收藏
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  const pool = ids.slice(0, Math.max(n * 4, 16));
+
+  const meta = {};
+  for (let i = 0; i < pool.length; i += 100) {
+    const batch = pool.slice(i, i + 100).join(',');
+    try {
+      const d = await jget(withCookie(`${NB()}/song/detail?ids=${batch}`));
+      for (const s of d?.songs || []) meta[String(s.id)] = normalizeSong(s);
+    } catch {}
+  }
+  const urls = {};
+  for (let i = 0; i < pool.length; i += 100) {
+    const batch = pool.slice(i, i + 100).join(',');
+    try {
+      const d = await jget(withCookie(`${NB()}/song/url/v1?id=${batch}&level=exhigh`));
+      for (const it of d?.data || []) if (it.url) urls[String(it.id)] = it.url;
+    } catch {}
+  }
+
+  const out = [];
+  for (const id of pool) {
+    if (urls[id] && meta[id]) {
+      out.push({ ...meta[id], url: urls[id] });
+      if (out.length >= n) break;
+    }
+  }
+  return out;
+}
+
 // ====================================================================
 const provider = config.musicSource === 'local' ? localProvider : neteaseProvider;
 

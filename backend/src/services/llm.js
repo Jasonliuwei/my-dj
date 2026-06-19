@@ -18,45 +18,65 @@ function templateScript({ scene, track, prevTrack }) {
   return `${o} ${prev}Up next, here's "${track.title}" by ${track.artist} — this one's for you.`;
 }
 
+const DJ_SYS =
+  'You are a warm, charismatic radio DJ speaking natural, conversational English. ' +
+  'Be vivid, personal and a little poetic, like you are talking to one listener late at night. ' +
+  'No lists, no stage directions, no emojis or brackets — output only the words to be spoken aloud.';
+
+function timeOfDay() {
+  const h = new Date().getHours();
+  return h < 5 ? 'late night' : h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening';
+}
+
+async function chat(user, maxTokens = 220) {
+  const res = await fetch(`${BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY}` },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: DJ_SYS },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.9,
+      max_tokens: maxTokens,
+    }),
+  });
+  if (!res.ok) throw new Error(`llm ${res.status}`);
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content?.trim() || '';
+}
+
 export async function djScript({ scene, track, prevTrack }) {
-  if (!KEY) {
-    return templateScript({ scene, track, prevTrack });
-  }
+  if (!KEY) return templateScript({ scene, track, prevTrack });
   const s = SCENES[scene] || {};
-  const sys =
-    'You are a warm, charismatic radio DJ speaking natural, conversational English. ' +
-    'Speak 2 to 3 short sentences that set the mood and lead smoothly into the next track. ' +
-    'Be vivid, personal and a little poetic, like you are talking to one listener late at night. ' +
-    'No lists, no stage directions, no emojis or brackets — output only the words to be spoken aloud.';
   const user =
-    `Scene: ${s.label || scene} (mood: ${s.djTone || 'warm and natural'}).\n` +
+    `Mood: ${s.djTone || 'warm and natural'}.\n` +
     (prevTrack ? `Just played: "${prevTrack.title}" by ${prevTrack.artist}.\n` : '') +
     `Up next: "${track.title}" by ${track.artist}.\n` +
     `Write a short, engaging DJ intro in English (2-3 sentences) that flows naturally into this song.`;
-
   try {
-    const res = await fetch(`${BASE}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${KEY}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: sys },
-          { role: 'user', content: user },
-        ],
-        temperature: 0.9,
-        max_tokens: 220,
-      }),
-    });
-    if (!res.ok) throw new Error(`llm ${res.status}`);
-    const data = await res.json();
-    const text = data?.choices?.[0]?.message?.content?.trim();
-    return text || templateScript({ scene, track, prevTrack });
+    return (await chat(user)) || templateScript({ scene, track, prevTrack });
   } catch (e) {
-    console.error('[llm] request failed, fallback to template:', e.message);
+    console.error('[llm] djScript failed, fallback:', e.message);
     return templateScript({ scene, track, prevTrack });
+  }
+}
+
+// 开场问候（私人电台开播）
+export async function djGreeting({ count }) {
+  const tod = timeOfDay();
+  const fallback =
+    `Good ${tod}, and welcome back to your own private radio. ` +
+    `I've pulled together ${count} songs from your collection for tonight — let's ease into it together.`;
+  if (!KEY) return fallback;
+  const user =
+    `It is ${tod}. You have curated ${count} songs from the listener's own favorites for this session. ` +
+    `Warmly greet them to open the show in 2 short sentences, and say you're about to begin.`;
+  try {
+    return (await chat(user, 160)) || fallback;
+  } catch (e) {
+    console.error('[llm] djGreeting failed, fallback:', e.message);
+    return fallback;
   }
 }
