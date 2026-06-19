@@ -35,19 +35,35 @@ export default function DailyRadio() {
   };
 
   const speak = useCallback(async (text, token) => {
-    if (!text) return;
+    if (!text) { return; }
     setSpeaking(true);
     try {
-      const url = await api.tts(text);
+      // 取语音(带 15s 超时,避免接口卡住)
+      let url = null;
+      try {
+        url = await Promise.race([
+          api.tts(text),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('tts-timeout')), 15000)),
+        ]);
+      } catch { url = null; }
       if (token !== tokenRef.current) return;
+
       if (url) {
         await new Promise((resolve) => {
+          let done = false;
+          const fin = () => { if (!done) { done = true; resolve(); } };
           const a = (djAudioRef.current = new Audio(url));
-          a.onended = resolve; a.onerror = resolve;
-          a.play().catch(resolve);
+          a.onended = fin;
+          a.onerror = fin;
+          a.play().then(() => {
+            const d = a.duration;
+            if (d && isFinite(d)) setTimeout(fin, (d + 1) * 1000);
+          }).catch(fin);
+          setTimeout(fin, 30000); // 硬兜底:语音这一步永不卡死
         });
       } else {
-        await speakBrowser(text);
+        // 浏览器语音兜底,同样加超时
+        await Promise.race([speakBrowser(text), new Promise((r) => setTimeout(r, 18000))]);
       }
     } catch { /* ignore */ }
     if (token === tokenRef.current) setSpeaking(false);
