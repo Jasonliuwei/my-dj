@@ -12,10 +12,27 @@ function greetByHour() {
   return '晚上好';
 }
 
+const IcPrev = () => (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M7 6h2.2v12H7zM19 6v12l-8.6-6z" /></svg>
+);
+const IcNext = () => (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" aria-hidden="true"><path d="M14.8 6H17v12h-2.2zM5 6l8.6 6L5 18z" /></svg>
+);
+const IcPlay = () => (
+  <svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" /></svg>
+);
+const IcPause = () => (
+  <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true"><path d="M7 5h3.4v14H7zM13.6 5H17v14h-3.4z" /></svg>
+);
+const IcHeart = ({ filled }) => (
+  <svg viewBox="0 0 24 24" width="18" height="18" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <path d="M12 20.3l-1.4-1.27C5.4 14.3 2 11.2 2 7.5 2 5 4 3 6.5 3c1.7 0 3.4.8 4.5 2.1C12.1 3.8 13.8 3 15.5 3 18 3 20 5 20 7.5c0 3.7-3.4 6.8-8.6 11.53z" />
+  </svg>
+);
+
 export default function DailyRadio() {
   const [phase, setPhase] = useState('landing'); // landing | loading | onair | ended | error
   const [error, setError] = useState('');
-  const [greeting, setGreeting] = useState('');
   const [tracks, setTracks] = useState([]);
   const [idx, setIdx] = useState(0);
   const [track, setTrack] = useState(null);
@@ -35,10 +52,9 @@ export default function DailyRadio() {
   };
 
   const speak = useCallback(async (text, token) => {
-    if (!text) { return; }
+    if (!text) return;
     setSpeaking(true);
     try {
-      // 取语音(带 15s 超时,避免接口卡住)
       let url = null;
       try {
         url = await Promise.race([
@@ -47,22 +63,16 @@ export default function DailyRadio() {
         ]);
       } catch { url = null; }
       if (token !== tokenRef.current) return;
-
       if (url) {
         await new Promise((resolve) => {
           let done = false;
           const fin = () => { if (!done) { done = true; resolve(); } };
           const a = (djAudioRef.current = new Audio(url));
-          a.onended = fin;
-          a.onerror = fin;
-          a.play().then(() => {
-            const d = a.duration;
-            if (d && isFinite(d)) setTimeout(fin, (d + 1) * 1000);
-          }).catch(fin);
-          setTimeout(fin, 30000); // 硬兜底:语音这一步永不卡死
+          a.onended = fin; a.onerror = fin;
+          a.play().then(() => { const d = a.duration; if (d && isFinite(d)) setTimeout(fin, (d + 1) * 1000); }).catch(fin);
+          setTimeout(fin, 30000);
         });
       } else {
-        // 浏览器语音兜底,同样加超时
         await Promise.race([speakBrowser(text), new Promise((r) => setTimeout(r, 18000))]);
       }
     } catch { /* ignore */ }
@@ -77,7 +87,6 @@ export default function DailyRadio() {
     const prev = i > 0 ? arr[i - 1] : null;
     setIdx(i); setTrack(t); setLiked(false); setProgress(0); setDjText('');
 
-    // 1) 串场
     try {
       const data = await api.djIntro(t, prev);
       if (token !== tokenRef.current) return;
@@ -86,7 +95,6 @@ export default function DailyRadio() {
     } catch { /* ignore */ }
     if (token !== tokenRef.current) return;
 
-    // 2) 放歌
     const el = musicRef.current;
     if (el && t.url) {
       el.src = t.url;
@@ -101,28 +109,28 @@ export default function DailyRadio() {
     try {
       const data = await api.daily(6);
       if (token !== tokenRef.current) return;
-      if (!data.tracks || !data.tracks.length) {
-        setError(data.message || '没能取到歌曲'); setPhase('error'); return;
-      }
+      if (!data.tracks || !data.tracks.length) { setError(data.message || '没能取到歌曲'); setPhase('error'); return; }
       setTracks(data.tracks);
-      setGreeting(data.greeting || '');
       setPhase('onair');
       await speak(data.greeting, token);
       if (token !== tokenRef.current) return;
       playIndex(0, data.tracks);
-    } catch (e) {
+    } catch {
       if (token !== tokenRef.current) return;
       setError('连接服务失败,请稍后重试'); setPhase('error');
     }
   }, [speak, playIndex]);
 
-  const onEnded = () => { if (track) api.feedback(track, 'complete', 'daily').catch(() => {}); playIndex(idx + 1); };
-  const onSkip = () => { if (track) api.feedback(track, 'skip', 'daily').catch(() => {}); stopVoice(); playIndex(idx + 1); };
+  // 切歌统一入口:作废旧任务 + 停掉旧语音
+  const go = (i) => { tokenRef.current++; stopVoice(); setSpeaking(false); playIndex(i); };
+
+  const onEnded = () => { if (track) api.feedback(track, 'complete', 'daily').catch(() => {}); go(idx + 1); };
+  const onSkip = () => { if (track) api.feedback(track, 'skip', 'daily').catch(() => {}); go(idx + 1); };
+  const onPrev = () => { go(Math.max(0, idx - 1)); };
   const skipIntro = () => { stopVoice(); setSpeaking(false); const el = musicRef.current; if (el && track?.url) { if (!el.src) el.src = track.url; el.play().then(() => setPlaying(true)).catch(() => {}); } };
   const toggle = () => { const el = musicRef.current; if (!el) return; if (el.paused) { el.play(); setPlaying(true); } else { el.pause(); setPlaying(false); } };
   const onLike = () => { if (!track) return; const v = !liked; setLiked(v); api.feedback(track, v ? 'like' : 'skip', 'daily').catch(() => {}); };
   const onTime = () => { const el = musicRef.current; if (el && el.duration) setProgress((el.currentTime / el.duration) * 100); };
-
   const exit = () => { tokenRef.current++; stopVoice(); musicRef.current?.pause(); setPhase('landing'); setPlaying(false); setSpeaking(false); };
 
   useEffect(() => () => { tokenRef.current++; stopVoice(); }, []);
@@ -133,13 +141,11 @@ export default function DailyRadio() {
 
       {phase === 'landing' && (
         <div className="dr-landing">
-          <div className={'dr-wave'}>{BARS.map((_, i) => <span key={i} style={{ animationDelay: `${i * 0.06}s` }} />)}</div>
+          <div className="dr-wave">{BARS.map((_, i) => <span key={i} style={{ animationDelay: `${i * 0.06}s` }} />)}</div>
           <div className="dr-hello">{greetByHour()}，Jason</div>
           <div className="dr-sub">今天为你准备了一张歌单<br />全部来自你的网易云收藏</div>
-          <button className="dr-start" onClick={start}>
-            <span className="tri">▶</span> 开始今天的电台
-          </button>
-          <div className="dr-note">点开始,主持人先跟你打个招呼,再一首首放给你听</div>
+          <button className="dr-start" onClick={start}><span className="tri">▶</span> 开始今天的电台</button>
+          <div className="dr-note">点开始,主持人先跟你聊两句,再一首首放给你听</div>
         </div>
       )}
 
@@ -193,10 +199,14 @@ export default function DailyRadio() {
           <div className="dr-progress"><div style={{ width: progress + '%' }} /></div>
 
           <div className="controls">
-            <button className={'icon' + (liked ? ' liked' : '')} onClick={onLike} aria-label="喜欢">{liked ? '❤️' : '🤍'}</button>
-            <button className="icon big" onClick={toggle} aria-label="播放暂停">{playing || speaking ? '⏸' : '▶'}</button>
-            <button className="icon" onClick={onSkip} aria-label="下一首">⏭</button>
+            <button className="icon" onClick={onPrev} aria-label="上一首"><IcPrev /></button>
+            <button className="icon big" onClick={toggle} aria-label="播放/暂停">{playing || speaking ? <IcPause /> : <IcPlay />}</button>
+            <button className="icon" onClick={onSkip} aria-label="下一首"><IcNext /></button>
           </div>
+
+          <button className={'dr-like' + (liked ? ' on' : '')} onClick={onLike} aria-label="喜欢这首">
+            <IcHeart filled={liked} /> {liked ? '已加入喜欢' : '喜欢这首'}
+          </button>
         </div>
       )}
     </div>

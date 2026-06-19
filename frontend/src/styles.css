@@ -105,3 +105,8 @@ h4 { margin: 16px 0 4px; }
 .dr-artist { color: var(--muted); margin-top: 5px; }
 .dr-progress { width: 100%; max-width: 300px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.12); margin: 18px 0 2px; overflow: hidden; }
 .dr-progress > div { height: 100%; background: linear-gradient(90deg, #43e0c0, #7c5cff); transition: width .25s linear; }
+.dr-like { margin-top: 18px; display: inline-flex; align-items: center; gap: 7px; background: rgba(255,255,255,.06);
+  border: 1px solid var(--line); color: var(--muted); padding: 8px 16px; border-radius: 20px; font-size: 13px; cursor: pointer; }
+.dr-like:active { transform: scale(.96); }
+.dr-like.on { color: #ff7eb0; border-color: rgba(255,126,176,.5); background: rgba(255,126,176,.12); }
+.controls .icon svg { display: block; }

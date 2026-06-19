@@ -19,8 +19,9 @@ function templateScript({ scene, track, prevTrack }) {
 }
 
 const DJ_SYS =
-  'You are a warm, charismatic radio DJ speaking natural, conversational English. ' +
-  'Be vivid, personal and a little poetic, like you are talking to one listener late at night. ' +
+  'You are a warm, charismatic radio DJ speaking natural, conversational English to one listener named Jason. ' +
+  'Address him by name now and then so it feels personal and friendly. ' +
+  'Be vivid, warm and a little playful — like a close friend hosting a cozy late-night show. ' +
   'No lists, no stage directions, no emojis or brackets — output only the words to be spoken aloud.';
 
 function timeOfDay() {
@@ -67,14 +68,17 @@ export async function djScript({ scene, track, prevTrack }) {
 export async function djGreeting({ count }) {
   const tod = timeOfDay();
   const fallback =
-    `Good ${tod}, and welcome back to your own private radio. ` +
-    `I've pulled together ${count} songs from your collection for tonight — let's ease into it together.`;
+    `Hey Jason, good ${tod}, and welcome back to your own private radio. ` +
+    `It's good to have you here again — I hope your day's been kind to you. ` +
+    `I went digging through your favorites and pulled together ${count} songs just for this little session. ` +
+    `So get comfortable, let everything else wait a moment, and let's ease into it together.`;
   if (!KEY) return fallback;
   const user =
-    `It is ${tod}. You have curated ${count} songs from the listener's own favorites for this session. ` +
-    `Warmly greet them to open the show in 2 short sentences, and say you're about to begin.`;
+    `It is ${tod}. You're opening Jason's personal radio session with ${count} songs from his own favorites. ` +
+    `Greet Jason warmly by name, make a little friendly small talk or share a light, charming joke to set a cozy mood, ` +
+    `then say you're about to begin. Keep it natural and unhurried — about 4 to 5 sentences.`;
   try {
-    return (await chat(user, 160)) || fallback;
+    return (await chat(user, 320)) || fallback;
   } catch (e) {
     console.error('[llm] djGreeting failed, fallback:', e.message);
     return fallback;
