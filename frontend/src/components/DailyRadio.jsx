@@ -87,20 +87,60 @@ export default function DailyRadio() {
     const prev = i > 0 ? arr[i - 1] : null;
     setIdx(i); setTrack(t); setLiked(false); setProgress(0); setDjText('');
 
+    const el = musicRef.current;
+    if (el) el.pause(); // 停掉上一首
+    setPlaying(false);
+
+    // 1) 取串场词
+    let intro = '';
     try {
       const data = await api.djIntro(t, prev);
       if (token !== tokenRef.current) return;
-      setDjText(data.djText || '');
-      await speak(data.djText, token);
+      intro = data.djText || '';
+      setDjText(intro);
     } catch { /* ignore */ }
     if (token !== tokenRef.current) return;
 
-    const el = musicRef.current;
-    if (el && t.url) {
+    const startMusicNow = () => {
+      if (!el || !t.url || el.dataset.cur === t.id) return;
+      el.dataset.cur = t.id;
       el.src = t.url;
       el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
-    }
-  }, [tracks, speak]);
+    };
+
+    // 2) 取语音
+    let url = null;
+    try {
+      url = await Promise.race([api.tts(intro), new Promise((_, rej) => setTimeout(() => rej(new Error('t')), 15000))]);
+    } catch { url = null; }
+    if (token !== tokenRef.current) return;
+
+    // 3) 播 DJ 串场,并在结束前约 3.5s 让歌曲垫入(人声与音乐重叠,音量不变)
+    setSpeaking(true);
+    await new Promise((resolve) => {
+      let done = false;
+      const fin = () => { if (!done) { done = true; resolve(); } };
+      if (url) {
+        const a = (djAudioRef.current = new Audio(url));
+        a.onloadedmetadata = () => {
+          const d = a.duration;
+          if (d && isFinite(d)) {
+            const lead = Math.max(0, (d - 3.5) * 1000);
+            setTimeout(() => { if (token === tokenRef.current) startMusicNow(); }, lead);
+          }
+        };
+        a.onended = () => { startMusicNow(); fin(); };
+        a.onerror = () => { startMusicNow(); fin(); };
+        a.play().catch(() => { startMusicNow(); fin(); });
+        setTimeout(() => { startMusicNow(); fin(); }, 30000);
+      } else {
+        setTimeout(() => { if (token === tokenRef.current) startMusicNow(); }, 4000);
+        speakBrowser(intro).then(() => { startMusicNow(); fin(); });
+        setTimeout(() => { startMusicNow(); fin(); }, 18000);
+      }
+    });
+    if (token === tokenRef.current) setSpeaking(false);
+  }, [tracks]);
 
   const start = useCallback(async () => {
     tokenRef.current++;
