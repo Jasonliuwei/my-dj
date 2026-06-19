@@ -8,15 +8,14 @@ const KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || '';
 const MODEL = process.env.LLM_MODEL || process.env.QWEN_MODEL || 'deepseek-chat';
 
 function templateScript({ scene, track, prevTrack }) {
-  const s = SCENES[scene] || {};
   const openers = [
-    `这里是你的专属电台，${s.label || '此刻'}时间。`,
-    `欢迎回来，让我们继续。`,
-    `音乐不停，陪你到现在。`,
+    `You're tuned in to your own private radio, and the next few minutes belong to you.`,
+    `Welcome back — let's keep this going and let the music do the talking.`,
+    `Settle in, take a breath; I've got something good lined up for you.`,
   ];
   const o = openers[Math.floor(Math.random() * openers.length)];
-  const prev = prevTrack ? `刚刚那首《${prevTrack.title}》还不错吧。` : '';
-  return `${o}${prev}接下来这首，《${track.title}》，${track.artist}。送给此刻的你。`;
+  const prev = prevTrack ? `Hope "${prevTrack.title}" landed just right. ` : '';
+  return `${o} ${prev}Up next, here's "${track.title}" by ${track.artist} — this one's for you.`;
 }
 
 export async function djScript({ scene, track, prevTrack }) {
@@ -25,13 +24,15 @@ export async function djScript({ scene, track, prevTrack }) {
   }
   const s = SCENES[scene] || {};
   const sys =
-    '你是一个温暖、有个性的中文音乐电台 DJ。每次只说 1~2 句话，口语化、自然、像在跟一个人聊天，' +
-    '不要用书面语，不要列举，不要加任何括号或表情符号，直接输出要播报的话。';
+    'You are a warm, charismatic radio DJ speaking natural, conversational English. ' +
+    'Speak 2 to 3 short sentences that set the mood and lead smoothly into the next track. ' +
+    'Be vivid, personal and a little poetic, like you are talking to one listener late at night. ' +
+    'No lists, no stage directions, no emojis or brackets — output only the words to be spoken aloud.';
   const user =
-    `当前场景：${s.label || scene}，语气要求：${s.djTone || '自然亲切'}。\n` +
-    (prevTrack ? `上一首刚播完：《${prevTrack.title}》- ${prevTrack.artist}。\n` : '') +
-    `马上要播放：《${track.title}》- ${track.artist}。\n` +
-    `请用一句简短的串场词自然地引出这首歌。`;
+    `Scene: ${s.label || scene} (mood: ${s.djTone || 'warm and natural'}).\n` +
+    (prevTrack ? `Just played: "${prevTrack.title}" by ${prevTrack.artist}.\n` : '') +
+    `Up next: "${track.title}" by ${track.artist}.\n` +
+    `Write a short, engaging DJ intro in English (2-3 sentences) that flows naturally into this song.`;
 
   try {
     const res = await fetch(`${BASE}/chat/completions`, {
@@ -47,7 +48,7 @@ export async function djScript({ scene, track, prevTrack }) {
           { role: 'user', content: user },
         ],
         temperature: 0.9,
-        max_tokens: 120,
+        max_tokens: 220,
       }),
     });
     if (!res.ok) throw new Error(`llm ${res.status}`);
