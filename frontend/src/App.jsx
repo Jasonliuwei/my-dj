@@ -32,6 +32,7 @@ export default function App() {
   const playMusic = useCallback((t) => {
     const el = musicRef.current;
     if (!el || !t?.url) return;
+    el.volume = 0.75;
     el.src = t.url;
     el.play().then(() => setStatus('playing')).catch(() => setStatus('paused'));
   }, []);
@@ -126,17 +127,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
-        <div className="brand">🎧 My DJ</div>
-        <nav>
-          <button className={view === 'home' ? 'on' : ''} onClick={() => setView('home')}>今日电台</button>
-          <button className={view === 'player' ? 'on' : ''} onClick={() => { setScene(null); setView('player'); }}>场景</button>
-          <button className={view === 'netease' ? 'on' : ''} onClick={() => setView('netease')}>网易云</button>
-          <button className={view === 'favorites' ? 'on' : ''} onClick={openFavorites}>收藏</button>
-          <button className={view === 'stats' ? 'on' : ''} onClick={openStats}>口味</button>
-        </nav>
-      </header>
-
       {view === 'home' && <DailyRadio />}
 
       {view === 'player' && !scene && (
