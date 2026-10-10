@@ -22,6 +22,8 @@ const saveResume = (tracks, idx, pos) => {
   try { localStorage.setItem(RESUME_KEY, JSON.stringify({ tracks, idx, pos: Math.floor(pos || 0), at: Date.now() })); } catch {}
 };
 const clearResume = () => { try { localStorage.removeItem(RESUME_KEY); } catch {} };
+const EMBEDDED = (() => { try { return window.parent !== window; } catch { return true; } })();
+const closeEmbed = () => { try { window.parent.postMessage({ type: 'mydj-close' }, '*'); } catch {} };
 const fmtTime = (s) => (!s || !isFinite(s) ? '0:00' : Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'));
 const todayLabel = () => {
   try { return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', weekday: 'short' }).format(new Date()); } catch { return ''; }
@@ -547,7 +549,7 @@ export default function DailyRadio() {
 
   const nextTrack = track ? tracks[idx + 1] : tracks[0]; // 开场白期间还没开始放歌
   const onDisc = playing && !speaking;           // 唱针落在唱片上
-  const armDeg = onDisc || (!speaking && time.cur > 0) ? 4 + (progress / 100) * 20 : -16; // 随进度从外圈走到内圈
+  const armDeg = onDisc || (!speaking && time.cur > 0) ? 4 + (progress / 100) * 11 : -16; // 随进度从外圈走到内圈
 
   return (
     <div className="vr">
@@ -557,6 +559,7 @@ export default function DailyRadio() {
       <div className="vr-col">
         {phase === 'landing' && (
           <div className="vr-landing">
+            {EMBEDDED && <button className="vr-tbtn vr-home-back" onClick={closeEmbed} aria-label="返回主站">‹</button>}
             <div className="vr-sleeve-wrap">
               <div className="vr-sleeve-disc"><Vinyl /></div>
               <div className="vr-sleeve">

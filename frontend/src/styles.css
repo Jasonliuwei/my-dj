@@ -140,18 +140,18 @@ h4 { margin: 16px 0 4px; }
 /* 唱片本体 */
 .vr-vinyl { position: absolute; inset: 3%; border-radius: 50%; display: grid; place-items: center;
   background:
-    radial-gradient(circle, #0e0c0b 0 26.5%, transparent 27%),
+    radial-gradient(circle, #0e0c0b 0 28.5%, transparent 29%),
     radial-gradient(circle, transparent 0 44%, rgba(255,255,255,.055) 44.3% 44.7%, transparent 45% 61%, rgba(255,255,255,.045) 61.3% 61.6%, transparent 62% 79%, rgba(255,255,255,.05) 79.3% 79.6%, transparent 80% 97.5%, rgba(255,255,255,.07) 98%),
     repeating-radial-gradient(circle, #070605 0 .9px, #151211 .9px 2.1px);
   box-shadow: 0 0 0 1px #000;
   animation: spin 5.6s linear infinite; animation-play-state: paused; }
 .vr-vinyl.spin { animation-play-state: running; }
-.vr-label { width: 36%; height: 36%; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+.vr-label { width: 50%; height: 50%; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
   background: linear-gradient(135deg, #8a6a42, #3f2f1f); box-shadow: 0 0 0 1px rgba(0,0,0,.7), 0 0 0 2px rgba(226,196,140,.5); color: var(--cream); font-size: calc(var(--d) * .1); }
 .vr-label img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* 首页 / 加载 / 结束 */
-.vr-landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 0; }
+.vr-landing { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 0; }
 .vr-sleeve-wrap { position: relative; width: 190px; height: 170px; margin-bottom: 34px; }
 .vr-sleeve-disc { position: absolute; right: 0; top: 5px; width: 160px; height: 160px; --d: 160px; }
 .vr-sleeve { position: absolute; left: 0; top: 0; width: 170px; height: 170px; border-radius: 3px; padding: 14px; text-align: left;
@@ -171,6 +171,7 @@ h4 { margin: 16px 0 4px; }
 .vr-end-btns { display: flex; gap: 12px; }
 .vr-resume { margin-top: 12px; font-size: 13px; color: var(--mut); font-family: -apple-system, "PingFang SC", system-ui, sans-serif; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vr .vr-link { margin-top: 14px; padding: 10px; font-size: 13px; color: var(--mut); text-decoration: underline; text-underline-offset: 3px; font-family: -apple-system, "PingFang SC", system-ui, sans-serif; }
+.vr .vr-home-back { position: absolute; left: 0; top: 0; }
 .vr-err { color: #ff9c8a; line-height: 1.6; font-family: system-ui, sans-serif; }
 
 html:has(.vr), body:has(.vr) { background: #0c0a09; }
@@ -203,7 +204,7 @@ html:has(.vr), body:has(.vr) { background: #0c0a09; }
 /* 高光不跟着唱片转，才像真的在反光 */
 .vr-sheen { position: absolute; inset: 4.7%; border-radius: 50%; pointer-events: none; transition: opacity .7s;
   background: conic-gradient(from 18deg, transparent 0 4%, rgba(255,238,205,.05) 7%, rgba(255,238,205,.17) 11%, rgba(255,238,205,.05) 15%, transparent 19% 53%, rgba(255,238,205,.04) 56%, rgba(255,238,205,.11) 60.5%, rgba(255,238,205,.04) 65%, transparent 69%);
-  -webkit-mask: radial-gradient(circle, transparent 0 19%, #000 20%); mask: radial-gradient(circle, transparent 0 19%, #000 20%); }
+  -webkit-mask: radial-gradient(circle, transparent 0 26%, #000 27%); mask: radial-gradient(circle, transparent 0 26%, #000 27%); }
 .vr-onair.talk .vr-sheen { opacity: .45; }
 .vr-spindle { position: absolute; left: 50%; top: 50%; width: 3%; height: 3%; margin: -1.5% 0 0 -1.5%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #c2b196 55%, #4e4335); box-shadow: 0 1px 2px rgba(0,0,0,.8); }
 /* 唱臂是一张 300×300 的 SVG，支点在 (258,48)；角度由 JS 按播放进度给 */
