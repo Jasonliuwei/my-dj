@@ -7,22 +7,31 @@ const BASE = (process.env.LLM_BASE_URL || 'https://api.deepseek.com/v1').replace
 const KEY = process.env.LLM_API_KEY || process.env.DEEPSEEK_API_KEY || '';
 const MODEL = process.env.LLM_MODEL || process.env.QWEN_MODEL || 'deepseek-chat';
 
-function templateScript({ scene, track, prevTrack }) {
-  const openers = [
-    `You're tuned in to your own private radio, and the next few minutes belong to you.`,
-    `Welcome back — let's keep this going and let the music do the talking.`,
-    `Settle in, take a breath; I've got something good lined up for you.`,
+function templateScript({ track }) {
+  const lines = [
+    `Here's ${track.artist} with "${track.title}".`,
+    `Up next, "${track.title}" by ${track.artist}.`,
+    `This one's "${track.title}", from ${track.artist}.`,
   ];
-  const o = openers[Math.floor(Math.random() * openers.length)];
-  const prev = prevTrack ? `Hope "${prevTrack.title}" landed just right. ` : '';
-  return `${o} ${prev}Up next, here's "${track.title}" by ${track.artist} — this one's for you.`;
+  return lines[Math.floor(Math.random() * lines.length)];
 }
 
+// 主持人人设：话少、有信息量、不抒情。串场越短越好——歌才是主角
 const DJ_SYS =
-  'You are a warm, charismatic radio DJ speaking natural, conversational English to one listener. ' +
-  'The listener is named Jason, but only use his name in the opening greeting. Do not use the listener\'s name in song intros. ' +
-  'Be vivid, warm and a little playful — like a close friend hosting a cozy late-night show. ' +
-  'No lists, no stage directions, no emojis or brackets — output only the words to be spoken aloud.';
+  'You host a radio show for exactly one listener, in natural spoken English. ' +
+  'You sound like a sharp, dry-witted friend with great taste, not a greeting card. Say less: every line must earn its place. ' +
+  'Never use similes or poetic filler ("like a gentle breeze", "wraps around you"), never call music a journey, never recap the song that just played. ' +
+  'Only state a fact about a song or artist if you are certain it is true; otherwise talk about the moment instead. ' +
+  'Song and artist names may be Chinese: say them exactly as written, never translate or explain them. ' +
+  'The listener is Jason; use his name only in the opening greeting, never in song intros. ' +
+  'No lists, no stage directions, no emojis or brackets. Output only the words to be spoken aloud.';
+
+// 模型偶尔会超长：硬性截到前 n 句，保证串场永远是"一两句"
+function clampSentences(text, n) {
+  const clean = String(text || '').trim().replace(/^["“]([\s\S]*)["”]$/, '$1');
+  const parts = clean.split(/(?<=[.!?。！？])\s+/).filter(Boolean);
+  return parts.slice(0, n).join(' ');
+}
 
 function stripListenerName(text) {
   return String(text || '')
@@ -95,24 +104,34 @@ async function chat(user, maxTokens = 220) {
   return data?.choices?.[0]?.message?.content?.trim() || '';
 }
 
-export async function djScript({ scene, track, prevTrack }) {
-  if (!KEY) return templateScript({ scene, track, prevTrack });
+export async function djScript({ scene, track }) {
+  if (!KEY) return templateScript({ track });
   const s = SCENES[scene] || {};
+  const t = timeContext();
   const heartCount = Math.min(Math.max(parseInt(track?.heartCount || 0, 10) || 0, 0), 5);
+  // 每次随机换一个切入角度，避免每首都是同一个套路
+  const angles = [
+    'one concrete, true detail about this song or artist (the year, who wrote it, where it comes from), only if you are certain of it',
+    `why this one suits a ${t.weekday} ${t.partOfDay}`,
+    'a quick, dry one-line observation or tease prompted by the title',
+    'the bare minimum: hand over to the song with a little attitude',
+  ];
+  if (heartCount > 0)
+    angles.push(`he has hearted this song ${heartCount} time${heartCount > 1 ? 's' : ''}; nod to it being a repeat favorite, casually, without sounding like app telemetry`);
+  const angle = angles[Math.floor(Math.random() * angles.length)];
   const user =
-    `Mood: ${s.djTone || 'warm and natural'}.\n` +
-    (prevTrack ? `Just played: "${prevTrack.title}" by ${prevTrack.artist}.\n` : '') +
-    `Up next: "${track.title}" by ${track.artist}.\n` +
-    (heartCount > 0
-      ? `Listener signal: he has marked this song with ${heartCount} heart${heartCount > 1 ? 's' : ''} out of 5. Treat it as a stronger personal favorite when shaping the intro, but do not sound like you are reading app telemetry.\n`
-      : '') +
-    `Write a short, engaging DJ intro in English (2-3 sentences) that flows naturally into this song. ` +
-    `Do not use the listener's name in song intros. Do not start with "Jason". Just introduce the song naturally.`;
+    (s.djTone ? `Mood: ${s.djTone}.
+` : '') +
+    `Up next: "${track.title}" by ${track.artist}.
+` +
+    `Angle: ${angle}.
+` +
+    `Write the intro: ONE or TWO short sentences, 25 words at most, and name the song or the artist.`;
   try {
-    return stripListenerName(await chat(user)) || templateScript({ scene, track, prevTrack });
+    return clampSentences(stripListenerName(await chat(user, 80)), 2) || templateScript({ track });
   } catch (e) {
     console.error('[llm] djScript failed, fallback:', e.message);
-    return templateScript({ scene, track, prevTrack });
+    return templateScript({ track });
   }
 }
 
@@ -120,15 +139,9 @@ export async function djScript({ scene, track, prevTrack }) {
 export async function djGreeting({ count }) {
   const t = timeContext();
   const fallback =
-    `Hey Jason, good ${t.partOfDay}, and welcome back to your own private radio. ` +
-    (t.holiday
-      ? `Happy ${t.holiday}! `
-      : t.isWeekend
-        ? `Hope you're having an easy ${t.weekday}. `
-        : '') +
-    `It's good to have you here again — I hope your day's been kind to you. ` +
-    `I went digging through your favorites and pulled together ${count} songs just for this little session. ` +
-    `So get comfortable, let everything else wait a moment, and let's ease into it together.`;
+    `Good ${t.partOfDay}, Jason. ` +
+    (t.holiday ? `Happy ${t.holiday}. ` : '') +
+    `${count} songs from your favorites, starting now.`;
   if (!KEY) return fallback;
   const dayInfo = t.holiday
     ? `Today is ${t.weekday}, and in China it is ${t.holiday} — give a warm, fitting holiday greeting.`
@@ -136,13 +149,13 @@ export async function djGreeting({ count }) {
       ? `It is ${t.weekday}, a weekend — keep it relaxed and unhurried.`
       : `It is ${t.weekday}, a weekday.`;
   const user =
-    `It is ${t.partOfDay} in China (local time). ${dayInfo}\n` +
-    `You're opening Jason's personal radio session with ${count} songs from his own favorites. ` +
-    `Greet Jason warmly by name and acknowledge the time of day naturally${t.holiday ? ' and the occasion' : ''}, ` +
-    `make a little friendly small talk or share a light, charming joke to set a cozy mood, ` +
-    `then say you're about to begin. Keep it natural and unhurried — about 4 to 5 sentences.`;
+    `It is ${t.partOfDay} in China (local time). ${dayInfo}
+` +
+    `Open Jason's personal radio session: ${count} songs from his own favorites. ` +
+    `Greet him by name, say one specific, human thing about this ${t.weekday} ${t.partOfDay}${t.holiday ? ' or the occasion' : ''}, ` +
+    `and get to the music. TWO sentences, 30 words at most. No small talk, no coffee jokes.`;
   try {
-    return (await chat(user, 320)) || fallback;
+    return clampSentences(await chat(user, 100), 3) || fallback;
   } catch (e) {
     console.error('[llm] djGreeting failed, fallback:', e.message);
     return fallback;

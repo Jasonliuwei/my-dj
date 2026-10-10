@@ -63,13 +63,14 @@ export const api = {
   trackUrl: (id) => j('/api/track-url?id=' + encodeURIComponent(id)).then((r) => r.json()),
 
   daily: (n = 6) => j('/api/radio/daily?n=' + n).then((r) => r.json()),
-  djIntro: (track, prev) => {
+  djIntro: (track, prev, talk = true) => {
     const p = new URLSearchParams({
       id: track.id,
       title: track.title || '',
       artist: track.artist || '',
       heartCount: String(track.heartCount ?? 0),
     });
+    if (!talk) p.set('talk', '0'); // 这首不串场，后端只记播放日志
     if (prev) { p.set('prevTitle', prev.title || ''); p.set('prevArtist', prev.artist || ''); }
     return j('/api/dj/intro?' + p.toString()).then((r) => r.json());
   },

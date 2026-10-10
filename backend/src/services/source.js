@@ -37,6 +37,10 @@ function normalizeSong(s) {
   };
 }
 
+// 只认完整版地址：VIP/付费歌在权限不足时会返回 30 秒试听片段（带 freeTrialInfo），
+// 放完就"提前切歌"，所以一律当作不可播放
+const fullUrl = (it) => (it?.url && !it.freeTrialInfo ? it.url : null);
+
 const neteaseProvider = {
   async search(keyword, limit = 30) {
     const url = withCookie(`${NB()}/cloudsearch?keywords=${encodeURIComponent(keyword)}&limit=${limit}`);
@@ -50,7 +54,7 @@ const neteaseProvider = {
     const url = withCookie(`${NB()}/song/url/v1?id=${id}&level=exhigh`);
     const data = await jget(url);
     const item = (data?.data || [])[0];
-    return item?.url || null;
+    return fullUrl(item);
   },
 
   async getLyric(id) {
@@ -158,7 +162,7 @@ export async function neteaseLikes(limit = 500) {
     const batch = ids.slice(i, i + 100).join(',');
     try {
       const d = await jget(withCookie(`${NB()}/song/url/v1?id=${batch}&level=standard`));
-      for (const it of d?.data || []) playable[String(it.id)] = !!it.url;
+      for (const it of d?.data || []) playable[String(it.id)] = !!fullUrl(it);
     } catch {}
   }
 
@@ -205,7 +209,7 @@ export async function neteaseDailyPicks(n = 6) {
     const batch = pool.slice(i, i + 100).join(',');
     try {
       const d = await jget(withCookie(`${NB()}/song/url/v1?id=${batch}&level=exhigh`));
-      for (const it of d?.data || []) if (it.url) urls[String(it.id)] = it.url;
+      for (const it of d?.data || []) if (fullUrl(it)) urls[String(it.id)] = it.url;
     } catch {}
   }
 

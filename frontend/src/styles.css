@@ -121,3 +121,136 @@ h4 { margin: 16px 0 4px; }
 .dr-heart-btn { gap: 3px; font-size: 18px; }
 .heart-count { min-width: 18px; height: 18px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; background: rgba(255,126,176,.16); border: 1px solid rgba(255,126,176,.32); color: #ffd3e4; font-size: 11px; font-weight: 800; line-height: 1; }
 .dr-prep { color: var(--muted); font-size: 14px; margin: 4px 0 16px; min-height: 56px; display: flex; align-items: center; }
+
+/* ===================== 黑胶唱机（今日电台） ===================== */
+.vr {
+  --bg: #17110e; --cream: #f1e7d6; --mut: #a8927a; --line: #4a3a2e; --amber: #e3a44f; --red: #ff5b45;
+  --d: min(74vw, 40vh, 300px); /* 唱盘直径，所有零件按它等比缩放 */
+  position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; z-index: 10;
+  background: radial-gradient(120% 70% at 50% 0%, #2a1e17 0%, var(--bg) 60%);
+  color: var(--cream); font-family: Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif;
+}
+.vr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.vr-amb { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(48px) saturate(1.5) brightness(.8); transform: scale(1.35); opacity: .22; transition: background-image .8s; pointer-events: none;
+  -webkit-mask: linear-gradient(#000, transparent 78%); mask: linear-gradient(#000, transparent 78%); }
+.vr-col { position: relative; max-width: 440px; min-height: 100%; margin: 0 auto; padding: 8px 22px 22px; display: flex; flex-direction: column; }
+.vr-top, .vr-times, .vr-next, .vr-sheet, .vr-note-foot, .vr-rpm, .vr-sub, .vr-start, .vr-ghost { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+
+/* 唱片本体 */
+.vr-vinyl { position: absolute; inset: 3%; border-radius: 50%; display: grid; place-items: center;
+  background: repeating-radial-gradient(circle, #0b0908 0 1.2px, #181412 1.2px 2.6px);
+  box-shadow: 0 0 0 1px #000, 0 10px 24px rgba(0,0,0,.55);
+  animation: spin 5.4s linear infinite; animation-play-state: paused; }
+.vr-vinyl.spin { animation-play-state: running; }
+.vr-label { width: 40%; height: 40%; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+  background: linear-gradient(135deg, #b8733a, #6e3f22); box-shadow: 0 0 0 3px #0b0908, 0 0 0 4px #2c241f; color: var(--cream); font-size: calc(var(--d) * .12); }
+.vr-label img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* 首页 / 加载 / 结束 */
+.vr-landing { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 30px 0; }
+.vr-sleeve-wrap { position: relative; width: 190px; height: 170px; margin-bottom: 34px; }
+.vr-sleeve-disc { position: absolute; right: 0; top: 5px; width: 160px; height: 160px; --d: 160px; }
+.vr-sleeve { position: absolute; left: 0; top: 0; width: 170px; height: 170px; border-radius: 3px; padding: 14px; text-align: left;
+  background: linear-gradient(135deg, #f4ead7, #dccdb2); color: #2a2019; display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 18px 40px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.08); transform: translateX(-28px) rotate(-3deg); }
+.vr-sleeve small { font-size: 9.5px; letter-spacing: .14em; font-family: -apple-system, system-ui, sans-serif; opacity: .7; }
+.vr-sleeve b { font-size: 40px; line-height: 1.05; font-weight: 700; }
+.vr-loading-disc { position: relative; width: 150px; height: 150px; --d: 150px; margin-bottom: 26px; }
+.vr-loading-disc .vr-vinyl.spin { animation-duration: 1.6s; }
+.vr-hello { font-size: 30px; font-weight: 700; }
+.vr-sub { color: var(--mut); font-size: 14px; line-height: 1.6; margin-top: 10px; }
+.vr .vr-start { margin-top: 28px; display: inline-flex; align-items: center; gap: 8px; padding: 13px 28px 13px 22px; border-radius: 30px;
+  background: var(--amber); color: #1d1612; font-size: 16px; font-weight: 700; box-shadow: 0 12px 28px rgba(227,164,79,.28); }
+.vr-start svg { width: 20px; height: 20px; }
+.vr-start:active, .vr-ghost:active { transform: scale(.97); }
+.vr .vr-ghost { margin-top: 28px; padding: 13px 22px; border-radius: 30px; border: 1px solid var(--line); color: var(--cream); font-size: 15px; }
+.vr-end-btns { display: flex; gap: 12px; }
+.vr-err { color: #ff9c8a; line-height: 1.6; font-family: system-ui, sans-serif; }
+
+/* 播放页 */
+.vr-onair { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.vr-top { width: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 48px; }
+.vr .vr-tbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 30px; line-height: 1; color: var(--mut); position: relative; }
+.vr .vr-heart.liked { color: #ff7e8a; }
+.vr-heart-n { position: absolute; right: 2px; top: 5px; min-width: 15px; height: 15px; border-radius: 8px; background: #ff7e8a; color: #1d1612; font: 700 10px/15px system-ui, sans-serif; }
+.vr-lamp { display: inline-flex; align-items: center; gap: 7px; padding: 5px 11px; border: 1px solid var(--line); border-radius: 6px; color: #7d6652; font-size: 11px; font-weight: 700; letter-spacing: .16em; transition: all .3s; }
+.vr-lamp i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.vr-lamp.on { color: var(--red); border-color: var(--red); box-shadow: 0 0 18px rgba(255,91,69,.4), inset 0 0 10px rgba(255,91,69,.15); }
+
+/* 唱机底座 */
+.vr-plinth { position: relative; margin-top: 8px; padding: 16px 16px 30px; border-radius: 26px;
+  background: repeating-linear-gradient(92deg, rgba(0,0,0,.07) 0 2px, transparent 2px 7px), linear-gradient(160deg, #4a3324, #2a1c13);
+  box-shadow: 0 26px 50px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.09), inset 0 -2px 0 rgba(0,0,0,.4); }
+.vr-deck { position: relative; width: var(--d); height: var(--d); }
+.vr-platter { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #1a1512 60%, #5d5046 96%, #2b241f 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08), 0 6px 14px rgba(0,0,0,.5); }
+/* 高光不跟着唱片转，才像真的在反光 */
+.vr-sheen { position: absolute; inset: 3%; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(from 20deg, transparent 0 6%, rgba(255,255,255,.13) 12%, transparent 19% 56%, rgba(255,255,255,.09) 62%, transparent 69%);
+  -webkit-mask: radial-gradient(circle, transparent 0 21.5%, #000 22.5%); mask: radial-gradient(circle, transparent 0 21.5%, #000 22.5%); }
+.vr-spindle { position: absolute; left: 50%; top: 50%; width: 4%; height: 4%; margin: -2% 0 0 -2%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9ab98 55%, #5f5448); box-shadow: 0 1px 2px rgba(0,0,0,.6); }
+/* 唱臂：支点在右上角，绕支点转动；角度由 JS 按播放进度给 */
+.vr-arm-base { position: absolute; left: 86%; top: 10%; width: calc(var(--d) * .15); height: calc(var(--d) * .15); margin: calc(var(--d) * -.075) 0 0 calc(var(--d) * -.075);
+  border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e9d9bd, #a8895d 55%, #5b4630); box-shadow: 0 4px 8px rgba(0,0,0,.55); }
+.vr-arm { position: absolute; left: 86%; top: 10%; width: 0; height: 0; transform-origin: 0 0; transition: transform .9s cubic-bezier(.4, 0, .2, 1); filter: drop-shadow(3px 5px 4px rgba(0,0,0,.5)); }
+.vr-arm i { position: absolute; display: block; }
+.vr-arm-rod { left: calc(var(--d) * -.011); top: calc(var(--d) * -.1); width: calc(var(--d) * .022); height: calc(var(--d) * .7); border-radius: 4px; background: linear-gradient(90deg, #8f744f, #f0dcb8 45%, #8f744f); }
+.vr-arm-weight { left: calc(var(--d) * -.04); top: calc(var(--d) * -.17); width: calc(var(--d) * .08); height: calc(var(--d) * .1); border-radius: 4px; background: linear-gradient(90deg, #3a3029, #7a6a5a 45%, #2a221d); }
+.vr-arm-head { left: calc(var(--d) * -.035); top: calc(var(--d) * .56); width: calc(var(--d) * .07); height: calc(var(--d) * .11); border-radius: 3px; background: linear-gradient(90deg, #b9965f, #f3e2c2 45%, #a8854f); transform: rotate(8deg); }
+.vr-led { position: absolute; left: 22px; bottom: 12px; width: 7px; height: 7px; border-radius: 50%; background: #5a4636; transition: all .3s; }
+.vr-led.on { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+.vr-rpm { position: absolute; right: 22px; bottom: 9px; font-size: 10px; letter-spacing: .12em; color: #8d735b; }
+
+/* 主持人便签：盖在唱机上，歌名一直看得见 */
+.vr-note { position: absolute; left: -6px; right: -6px; bottom: 34px; padding: 18px 18px 10px; border-radius: 3px;
+  background: linear-gradient(180deg, #f6edda, #eadcc2); color: #2a2019; transform: rotate(-1.6deg);
+  box-shadow: 0 18px 36px rgba(0,0,0,.6); animation: vr-note-in .4s cubic-bezier(.2, 1.2, .4, 1); }
+.vr-note::before { content: ""; position: absolute; left: 50%; top: -9px; width: 74px; height: 18px; margin-left: -37px; background: rgba(227,164,79,.55); transform: rotate(2deg); }
+.vr-note p { margin: 0; font-size: 17px; line-height: 1.55; font-style: italic; max-height: calc(var(--d) * .78); overflow-y: auto; }
+.vr-note .vr-note-wait { font-size: 14px; font-style: normal; color: #7d6652; }
+.vr-dots::after { content: "…"; animation: vr-blink 1s steps(2) infinite; }
+.vr-note-foot { display: flex; justify-content: space-between; align-items: center; min-height: 36px; margin-top: 6px; font-size: 11px; letter-spacing: .1em; color: #8a705a; }
+.vr .vr-note-foot button { padding: 10px 0 10px 12px; color: #a2552f; font-weight: 700; font-size: 12px; letter-spacing: 0; }
+@keyframes vr-note-in { from { opacity: 0; transform: translateY(16px) rotate(1deg); } }
+@keyframes vr-blink { 50% { opacity: 0; } }
+
+.vr-meta { width: 100%; text-align: center; margin-top: 20px; }
+.vr-title { font-size: 23px; font-weight: 700; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-artist { color: var(--mut); font-size: 14px; font-style: italic; margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-lyric { color: #d9c6a8; font-size: 13px; margin-top: 9px; min-height: 19px; opacity: .85; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.vr-seek { width: 100%; margin-top: 10px; }
+.vr-seek input { -webkit-appearance: none; appearance: none; width: 100%; height: 24px; margin: 0; background: transparent; cursor: pointer; }
+.vr-seek input::-webkit-slider-runnable-track { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--amber) var(--p), var(--line) var(--p)); }
+.vr-seek input::-moz-range-track { height: 3px; border-radius: 2px; background: linear-gradient(90deg, var(--amber) var(--p), var(--line) var(--p)); }
+.vr-seek input::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; margin-top: -5px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px rgba(227,164,79,.18); }
+.vr-seek input::-moz-range-thumb { width: 13px; height: 13px; border: 0; border-radius: 50%; background: var(--amber); }
+.vr-seek input:disabled { opacity: .45; cursor: default; }
+.vr-times { display: flex; justify-content: space-between; font-size: 11px; color: #8d735b; font-variant-numeric: tabular-nums; }
+
+.vr-ctl { display: flex; align-items: center; gap: 28px; margin-top: 6px; }
+.vr .vr-ctl button { width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; color: var(--cream); transition: transform .1s; }
+.vr .vr-ctl button:active { transform: scale(.92); }
+.vr .vr-ctl .big { width: 70px; height: 70px; border: 0; background: radial-gradient(circle at 35% 28%, #f3c57e, var(--amber) 60%, #b97d33); color: #1d1612; box-shadow: 0 10px 24px rgba(227,164,79,.3); }
+
+.vr .vr-next { width: 100%; margin-top: auto; padding-top: 18px; display: flex; align-items: center; gap: 9px; min-height: 44px; color: var(--mut); font-size: 12.5px; text-align: left; }
+.vr-next span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-next em { font-style: normal; font-variant-numeric: tabular-nums; color: #8d735b; }
+
+/* 歌单抽屉 */
+.vr-mask { position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.55); display: flex; align-items: flex-end; justify-content: center; animation: vr-fade .2s; }
+.vr-sheet { width: 100%; max-width: 480px; max-height: 80%; overflow-y: auto; padding: 18px 20px calc(20px + env(safe-area-inset-bottom, 0px)); border-radius: 22px 22px 0 0; background: #241a14; border-top: 1px solid var(--line); animation: vr-up .28s cubic-bezier(.2, .9, .3, 1); }
+.vr-sheet-h { font-size: 13px; letter-spacing: .14em; color: var(--mut); margin-bottom: 8px; }
+.vr .vr-row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 11px 0; border-bottom: 1px solid #33271f; text-align: left; color: var(--mut); }
+.vr-row .n { font-variant-numeric: tabular-nums; font-size: 12px; width: 18px; }
+.vr-row .tt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vr-row b { font-weight: 600; font-size: 15px; color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-row small { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr-row.cur b, .vr-row.cur .n { color: var(--amber); }
+.vr-row .mic { color: #8d735b; display: inline-flex; }
+.vr-mode { display: flex; align-items: center; justify-content: space-between; margin-top: 16px; font-size: 13px; color: var(--mut); }
+.vr-mode div { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.vr .vr-mode button { padding: 9px 13px; font-size: 13px; color: var(--mut); }
+.vr .vr-mode button.on { background: var(--amber); color: #1d1612; font-weight: 700; }
+@keyframes vr-fade { from { opacity: 0; } }
+@keyframes vr-up { from { transform: translateY(40px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .vr-vinyl { animation: none; } .vr-arm { transition: none; } }

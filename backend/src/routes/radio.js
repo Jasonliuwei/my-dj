@@ -118,8 +118,10 @@ router.get('/dj/intro', async (req, res) => {
     const prevTrack = req.query.prevTitle
       ? { title: req.query.prevTitle, artist: req.query.prevArtist }
       : null;
+    // talk=0：这首不串场，直接进歌（前端隔首才让主持人开口），仍照常记播放日志
+    const talk = req.query.talk !== '0';
     const [djText, lyric] = await Promise.all([
-      djScript({ scene: 'daily', track, prevTrack }),
+      talk ? djScript({ scene: 'daily', track, prevTrack }) : Promise.resolve(''),
       req.query.id ? source.getLyric(req.query.id).catch(() => '') : Promise.resolve(''),
     ]);
     if (req.query.id)
