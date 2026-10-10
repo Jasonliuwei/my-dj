@@ -69,6 +69,35 @@ const IcList = () => (
 const IcMic = () => (
   <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 003-3V6a3 3 0 00-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V22h2v-3.1A7 7 0 0019 12z" /></svg>
 );
+const WAVE = Array.from({ length: 34 }, (_, i) => ({ animationDelay: `${((i * 37) % 50) / 100}s`, animationDuration: `${0.38 + ((i * 13) % 9) / 30}s` }));
+// 唱臂：轴承座不动，配重 + 臂管 + 唱头整体绕支点 (258,48) 转
+const Tonearm = ({ deg }) => (
+  <svg className="vr-armsvg" viewBox="0 0 300 300" aria-hidden="true">
+    <defs>
+      <linearGradient id="vrGold" gradientUnits="userSpaceOnUse" x1="252" x2="264"><stop offset="0" stopColor="#7d6542" /><stop offset=".45" stopColor="#f6e6c4" /><stop offset="1" stopColor="#8a7049" /></linearGradient>
+      <linearGradient id="vrSteel" gradientUnits="userSpaceOnUse" x1="248" x2="268"><stop offset="0" stopColor="#191613" /><stop offset=".4" stopColor="#6a5f52" /><stop offset="1" stopColor="#14110f" /></linearGradient>
+      <radialGradient id="vrBase" cx=".38" cy=".3"><stop offset="0" stopColor="#4a4238" /><stop offset="1" stopColor="#0f0d0b" /></radialGradient>
+      <radialGradient id="vrCap" cx=".36" cy=".3"><stop offset="0" stopColor="#fff3d8" /><stop offset=".6" stopColor="#c9a970" /><stop offset="1" stopColor="#6d5637" /></radialGradient>
+    </defs>
+    <circle cx="258" cy="48" r="21" fill="url(#vrBase)" stroke="rgba(226,196,140,.45)" />
+    <circle cx="258" cy="48" r="14.5" fill="none" stroke="rgba(226,196,140,.25)" />
+    <g className="sw" style={{ transform: `rotate(${deg}deg)` }}>
+      <rect x="249" y="6" width="18" height="27" rx="4.5" fill="url(#vrSteel)" />
+      <rect x="249" y="12" width="18" height="1.2" fill="rgba(255,235,200,.25)" />
+      <rect x="255.6" y="30" width="4.8" height="16" fill="url(#vrGold)" />
+      <polygon points="255.7,48 260.3,48 259.5,192 256.5,192" fill="url(#vrGold)" />
+      <polygon points="256.5,190 259.6,191.5 250.5,212 247.6,210.5" fill="#cdb084" />
+      <g transform="rotate(24 249 212)">
+        <rect x="241.5" y="204" width="15" height="23" rx="2.5" fill="#f1e6d0" />
+        <rect x="241.5" y="204" width="15" height="5" rx="2.5" fill="#c9a970" />
+        <rect x="256" y="208.5" width="9" height="2.4" rx="1.2" fill="#c9a970" />
+        <rect x="246" y="227" width="6" height="3" rx="1" fill="#2a2520" />
+      </g>
+    </g>
+    <circle cx="258" cy="48" r="8.5" fill="url(#vrCap)" />
+    <circle cx="258" cy="48" r="2.4" fill="#2a2219" />
+  </svg>
+);
 const Vinyl = ({ cover, spin }) => (
   <div className={'vr-vinyl' + (spin ? ' spin' : '')}>
     <div className="vr-label">{cover ? <img src={cover} alt="" /> : <span>♪</span>}</div>
@@ -518,7 +547,7 @@ export default function DailyRadio() {
 
   const nextTrack = track ? tracks[idx + 1] : tracks[0]; // 开场白期间还没开始放歌
   const onDisc = playing && !speaking;           // 唱针落在唱片上
-  const armDeg = onDisc || (!speaking && time.cur > 0) ? 9 + (progress / 100) * 14 : -14; // 随进度从外圈走到内圈
+  const armDeg = onDisc || (!speaking && time.cur > 0) ? 4 + (progress / 100) * 20 : -16; // 随进度从外圈走到内圈
 
   return (
     <div className="vr">
@@ -577,7 +606,8 @@ export default function DailyRadio() {
         )}
 
         {phase === 'onair' && (
-          <div className="vr-onair">
+          <div className={'vr-onair' + (speaking ? ' talk' : '')}>
+            <div className="vr-lampglow" />
             <div className="vr-top">
               <button className="vr-tbtn" onClick={exit} aria-label="返回">‹</button>
               <span className={'vr-lamp' + (speaking ? ' on' : '')}><i /> ON AIR</span>
@@ -589,35 +619,40 @@ export default function DailyRadio() {
               ) : <span className="vr-tbtn" />}
             </div>
 
-            <div className="vr-plinth">
-              <div className={'vr-deck' + (onDisc ? ' play' : '')}>
-                <div className="vr-platter" />
-                <Vinyl cover={track?.cover ? track.cover + '?param=300y300' : ''} spin={onDisc} />
-                <div className="vr-sheen" />
-                <div className="vr-spindle" />
-                <div className="vr-arm-base" />
-                <div className="vr-arm" style={{ transform: `rotate(${armDeg}deg)` }}>
-                  <i className="vr-arm-weight" /><i className="vr-arm-rod" /><i className="vr-arm-head" />
-                </div>
-              </div>
-              <span className={'vr-led' + (playing || speaking ? ' on' : '')} />
-              <span className="vr-rpm">33⅓</span>
-
-              {speaking && (
-                <div className="vr-note" key={idx + (djText ? 't' : 'w')}>
-                  {djText ? <p>{djText}</p> : <p className="vr-note-wait">主持人正在拿起话筒<span className="vr-dots" /></p>}
-                  <div className="vr-note-foot">
-                    <span>— YOUR DJ</span>
-                    {djText && <button onClick={skipIntro}>跳过，直接听歌 ›</button>}
-                  </div>
-                </div>
-              )}
+            <div className="vr-deck">
+              <div className="vr-floor" />
+              <div className="vr-platter" />
+              <div className="vr-strobe" />
+              <div className="vr-mat" />
+              <Vinyl cover={track?.cover ? track.cover + '?param=300y300' : ''} spin={onDisc} />
+              <div className="vr-sheen" />
+              <div className="vr-spindle" />
+              <Tonearm deg={armDeg} />
             </div>
 
-            <div className="vr-meta">
-              <div className="vr-title">{track ? track.title : '今日歌单'}</div>
-              <div className="vr-artist">{track ? track.artist : `${tracks.length} 首 · 来自你的收藏`}</div>
-              <div className="vr-lyric">{!speaking && lyricLine ? lyricLine : '\u00a0'}</div>
+            {/* 说话区：主持人开口时,歌名歌词的位置换成声波 + 字幕 */}
+            <div className="vr-slot">
+              {speaking ? (
+                <div className="vr-host" key={'h' + idx}>
+                  <div className={'vr-wave' + (djText && !talkPaused ? '' : ' idle')}>{WAVE.map((st, i) => <i key={i} style={st} />)}</div>
+                  <div className="vr-say" key={djText ? 't' : 'w'}>
+                    {djText
+                      ? djText.split(' ').map((w, i) => <span className="vr-w" key={i} style={{ animationDelay: `${(i * 0.26).toFixed(2)}s` }}>{w + ' '}</span>)
+                      : <span className="vr-wait">主持人正在拿起话筒<span className="vr-dots" /></span>}
+                  </div>
+                  <div className="vr-upnext">
+                    <span>{track ? <>接下来 · <b>{track.title}</b> — {track.artist}</> : `今日歌单 · ${tracks.length} 首，来自你的收藏`}</span>
+                    {djText && <button onClick={skipIntro}>跳过 ›</button>}
+                  </div>
+                </div>
+              ) : (
+                <div className="vr-meta" key={'m' + idx}>
+                  <div className="vr-title">{track ? track.title : '今日歌单'}</div>
+                  <div className="vr-artist">{track ? track.artist : `${tracks.length} 首 · 来自你的收藏`}</div>
+                  <div className="vr-rule" />
+                  <div className="vr-lyric">{lyricLine || '\u00a0'}</div>
+                </div>
+              )}
             </div>
 
             <div className="vr-seek">
@@ -631,7 +666,7 @@ export default function DailyRadio() {
 
             <div className="vr-ctl">
               <button onClick={onPrev} aria-label="上一首"><IcPrev /></button>
-              <button className="big" onClick={toggle} aria-label="播放/暂停">{(speaking ? !talkPaused : playing) ? <IcPause /> : <IcPlay />}</button>
+              <button className="big" onClick={toggle} aria-label="播放/暂停"><b>{(speaking ? !talkPaused : playing) ? <IcPause /> : <IcPlay />}</b></button>
               <button onClick={onSkip} aria-label="下一首"><IcNext /></button>
             </div>
 
