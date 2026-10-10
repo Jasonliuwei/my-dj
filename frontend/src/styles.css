@@ -171,7 +171,8 @@ h4 { margin: 16px 0 4px; }
 .vr-end-btns { display: flex; gap: 12px; }
 .vr-resume { margin-top: 12px; font-size: 13px; color: var(--mut); font-family: -apple-system, "PingFang SC", system-ui, sans-serif; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vr .vr-link { margin-top: 14px; padding: 10px; font-size: 13px; color: var(--mut); text-decoration: underline; text-underline-offset: 3px; font-family: -apple-system, "PingFang SC", system-ui, sans-serif; }
-.vr .vr-home-back { position: absolute; left: 0; top: 0; }
+/* 和播放页左上角的返回键同一个位置（.vr-tbtn 自带 position:relative，这里要压过它） */
+.vr .vr-landing .vr-home-back { position: absolute; left: 0; top: 2px; }
 .vr-err { color: #ff9c8a; line-height: 1.6; font-family: system-ui, sans-serif; }
 
 html:has(.vr), body:has(.vr) { background: #0c0a09; }
