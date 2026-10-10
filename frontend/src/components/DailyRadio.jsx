@@ -9,6 +9,19 @@ const talkAt = (mode, i) => mode === 'all' || (mode === 'some' && i % 2 === 0);
 const loadTalkMode = () => {
   try { const m = localStorage.getItem('mydj_talk'); return TALK_MODES.some(([k]) => k === m) ? m : 'some'; } catch { return 'some'; }
 };
+// 记住听到哪了：手机切走后页面常被系统回收,回来整页重载,靠它接着听
+const RESUME_KEY = 'mydj_session';
+const RESUME_TTL = 6 * 3600 * 1000;
+const loadResume = () => {
+  try {
+    const r = JSON.parse(localStorage.getItem(RESUME_KEY) || 'null');
+    return r && Array.isArray(r.tracks) && r.tracks[r.idx] && Date.now() - r.at < RESUME_TTL ? r : null;
+  } catch { return null; }
+};
+const saveResume = (tracks, idx, pos) => {
+  try { localStorage.setItem(RESUME_KEY, JSON.stringify({ tracks, idx, pos: Math.floor(pos || 0), at: Date.now() })); } catch {}
+};
+const clearResume = () => { try { localStorage.removeItem(RESUME_KEY); } catch {} };
 const fmtTime = (s) => (!s || !isFinite(s) ? '0:00' : Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0'));
 const todayLabel = () => {
   try { return new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric', weekday: 'short' }).format(new Date()); } catch { return ''; }
@@ -78,6 +91,7 @@ export default function DailyRadio() {
   const [lyricLine, setLyricLine] = useState('');
   const [queueOpen, setQueueOpen] = useState(false);
   const [talkMode, setTalkMode] = useState(loadTalkMode);
+  const [resume, setResume] = useState(loadResume);
 
   const musicRef = useRef(null);
   const djAudioRef = useRef(null);
@@ -87,6 +101,8 @@ export default function DailyRadio() {
   const endTalkRef = useRef(null);      // 立刻结束当前这段主持人播报(清定时器 + 放行后续流程)
   const talkKindRef = useRef(null);     // 'greeting' | 'intro' | null
   const skipIntroOnceRef = useRef(false); // 跳过开场白后,第一首也不再串场
+  const seekOnStartRef = useRef(0);     // 续播:歌开始放时先跳到上次的位置
+  const lastSaveRef = useRef(0);
   const retriedRef = useRef(null);      // 已为哪首歌重取过播放地址(每首只重试一次)
   const talkModeRef = useRef(talkMode);
   const lyricsRef = useRef({});         // { [trackId]: [{t,text}] }
@@ -200,9 +216,10 @@ export default function DailyRadio() {
   const playIndex = useCallback(async (i, list) => {
     const token = tokenRef.current;
     const arr = list || tracks;
-    if (i >= arr.length) { setPhase('ended'); setPlaying(false); return; }
+    if (i >= arr.length) { clearResume(); setResume(null); setPhase('ended'); setPlaying(false); return; }
     const t = arr[i];
     const prev = i > 0 ? arr[i - 1] : null;
+    saveResume(arr, i, seekOnStartRef.current);
     setIdx(i); setTrack(t); setHeartCount(t.heartCount ?? 0); setProgress(0); setTime({ cur: 0, dur: 0 }); setLyricLine(''); setDjText('');
 
     const el = musicRef.current;
@@ -242,6 +259,7 @@ export default function DailyRadio() {
       el.dataset.seg = 'song'; el.dataset.segIdx = String(i); // 给 onEnded 判段用
       el.dataset.cur = t.id;
       if (el.src !== src) el.src = src;
+      if (seekOnStartRef.current > 0) { try { el.currentTime = seekOnStartRef.current; } catch {} seekOnStartRef.current = 0; }
       el.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
       setMeta(t);
     };
@@ -314,6 +332,21 @@ export default function DailyRadio() {
   }, [speak, playIndex, prefetchAll]);
 
   // 切歌统一入口:作废旧任务 + 停掉旧语音
+  // 接着上次听:歌单和进度都从本地取,地址当作已过期重新要,不再念开场白和串场
+  const resumeSession = () => {
+    const r = loadResume();
+    if (!r) { setResume(null); start(); return; }
+    unlockAudio();
+    tokenRef.current++;
+    const list = r.tracks.map((t) => ({ ...t, urlAt: 0 }));
+    setTracks(list); tracksRef.current = list;
+    introCacheRef.current = {};
+    skipIntroOnceRef.current = true;
+    seekOnStartRef.current = r.pos > 5 ? r.pos : 0;
+    setError(''); setPhase('onair');
+    playIndex(r.idx, list);
+  };
+
   // 作废进行中的播报:令牌已 +1,所以 endTalk 只清定时器、不会再启动旧歌
   const cancelTalk = () => { tokenRef.current++; stopVoice(); endTalkRef.current?.(); endTalkRef.current = null; talkKindRef.current = null; };
   const go = (i) => { cancelTalk(); setSpeaking(false); playIndex(i); };
@@ -335,7 +368,7 @@ export default function DailyRadio() {
   const bgPlay = useCallback((i, withDj = true) => {
     const arr = tracksRef.current;
     if (i < 0) return;
-    if (i >= arr.length) { setPhase('ended'); setPlaying(false); return; }
+    if (i >= arr.length) { clearResume(); setPhase('ended'); setPlaying(false); return; }
     cancelTalk();         // 作废任何进行中的前台串场任务
     const t = arr[i];
     setIdx(i); setTrack(t); setHeartCount(t.heartCount ?? 0); setProgress(0); setTime({ cur: 0, dur: 0 }); setLyricLine('');
@@ -430,6 +463,10 @@ export default function DailyRadio() {
     if (el.paused && force !== true) return; // 切歌时旧歌暂停也会触发一次,别把刚清零的进度又写回去
     setProgress((el.currentTime / el.duration) * 100);
     setTime({ cur: el.currentTime, dur: el.duration });
+    if (Date.now() - lastSaveRef.current > 5000) { // 每 5 秒记一次进度
+      lastSaveRef.current = Date.now();
+      saveResume(tracksRef.current, parseInt(el.dataset.segIdx || '0', 10), el.currentTime);
+    }
     const lines = lyricsRef.current[el.dataset.cur];
     if (lines && lines.length) {
       let line = '';
@@ -451,7 +488,7 @@ export default function DailyRadio() {
     const cur = liveIdx();
     Object.keys(introCacheRef.current).forEach((k) => { if (Number(k) > cur) delete introCacheRef.current[k]; });
   };
-  const exit = () => { cancelTalk(); musicRef.current?.pause(); setPhase('landing'); setPlaying(false); setSpeaking(false); setQueueOpen(false); };
+  const exit = () => { cancelTalk(); musicRef.current?.pause(); setPhase('landing'); setPlaying(false); setSpeaking(false); setQueueOpen(false); setResume(loadResume()); };
 
   // 锁屏控制按钮始终调到最新逻辑(随每次渲染刷新 idx 等)。
   // 手动切歌也带串场(withDj=true),和自动续播一致。
@@ -501,7 +538,15 @@ export default function DailyRadio() {
             </div>
             <div className="vr-hello">{greetByHour()}，Jason</div>
             <div className="vr-sub">从你的收藏里挑了 6 首，压成了今天这张唱片</div>
-            <button className="vr-start" onClick={start}><IcPlay /> 放下唱针</button>
+            {resume ? (
+              <>
+                <button className="vr-start" onClick={resumeSession}><IcPlay /> 接着听</button>
+                <div className="vr-resume">第 {resume.idx + 1} 首 · {resume.tracks[resume.idx].title}{resume.pos > 5 ? ` · ${fmtTime(resume.pos)}` : ''}</div>
+                <button className="vr-link" onClick={() => { clearResume(); setResume(null); start(); }}>换一张新的</button>
+              </>
+            ) : (
+              <button className="vr-start" onClick={start}><IcPlay /> 放下唱针</button>
+            )}
           </div>
         )}
 

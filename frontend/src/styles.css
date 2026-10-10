@@ -165,6 +165,8 @@ h4 { margin: 16px 0 4px; }
 .vr-start:active, .vr-ghost:active { transform: scale(.97); }
 .vr .vr-ghost { margin-top: 28px; padding: 13px 22px; border-radius: 30px; border: 1px solid var(--line); color: var(--cream); font-size: 15px; }
 .vr-end-btns { display: flex; gap: 12px; }
+.vr-resume { margin-top: 12px; font-size: 13px; color: var(--mut); font-family: -apple-system, "PingFang SC", system-ui, sans-serif; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vr .vr-link { margin-top: 14px; padding: 10px; font-size: 13px; color: var(--mut); text-decoration: underline; text-underline-offset: 3px; font-family: -apple-system, "PingFang SC", system-ui, sans-serif; }
 .vr-err { color: #ff9c8a; line-height: 1.6; font-family: system-ui, sans-serif; }
 
 /* 播放页 */
