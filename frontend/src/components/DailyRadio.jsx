@@ -3,11 +3,11 @@ import { api } from '../api.js';
 import { speakBrowser, parseLrc } from '../voice.js';
 
 const BARS = Array.from({ length: 26 });
-// 主持人话多话少: some=隔首开口(第 1、3、5 首前) / all=每首都说 / off=安静,只放歌
-const TALK_MODES = [['some', '隔首说'], ['all', '每首说'], ['off', '安静']];
+// 主持人话多话少: all=每首都说(默认) / some=隔首开口(第 1、3、5 首前) / off=安静,只放歌
+const TALK_MODES = [['all', '每首说'], ['some', '隔首说'], ['off', '安静']];
 const talkAt = (mode, i) => mode === 'all' || (mode === 'some' && i % 2 === 0);
 const loadTalkMode = () => {
-  try { const m = localStorage.getItem('mydj_talk'); return TALK_MODES.some(([k]) => k === m) ? m : 'some'; } catch { return 'some'; }
+  try { const m = localStorage.getItem('mydj_talk'); return TALK_MODES.some(([k]) => k === m) ? m : 'all'; } catch { return 'all'; }
 };
 // 记住听到哪了：手机切走后页面常被系统回收,回来整页重载,靠它接着听
 const RESUME_KEY = 'mydj_session';
