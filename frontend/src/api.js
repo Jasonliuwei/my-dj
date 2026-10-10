@@ -38,6 +38,9 @@ export const api = {
     return URL.createObjectURL(blob);
   },
 
+  // 直接给 <audio> 当媒体源用的 GET 地址（网络流式，锁屏后台也能播；blob 不行）
+  ttsUrl: (text) => '/api/tts?text=' + encodeURIComponent(text),
+
   favorites: () => j('/api/favorites').then((r) => r.json()),
   addFavorite: (track) =>
     j('/api/favorites', {
@@ -46,6 +49,12 @@ export const api = {
       body: JSON.stringify({ track }),
     }),
   removeFavorite: (id) => j('/api/favorites/' + id, { method: 'DELETE' }),
+  heartTrack: (track) =>
+    j('/api/hearts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ track }),
+    }).then((r) => r.json()),
 
   stats: () => j('/api/stats').then((r) => r.json()),
   health: () => j('/api/health').then((r) => r.json()),
@@ -55,7 +64,12 @@ export const api = {
 
   daily: (n = 6) => j('/api/radio/daily?n=' + n).then((r) => r.json()),
   djIntro: (track, prev) => {
-    const p = new URLSearchParams({ id: track.id, title: track.title || '', artist: track.artist || '' });
+    const p = new URLSearchParams({
+      id: track.id,
+      title: track.title || '',
+      artist: track.artist || '',
+      heartCount: String(track.heartCount ?? 0),
+    });
     if (prev) { p.set('prevTitle', prev.title || ''); p.set('prevArtist', prev.artist || ''); }
     return j('/api/dj/intro?' + p.toString()).then((r) => r.json());
   },

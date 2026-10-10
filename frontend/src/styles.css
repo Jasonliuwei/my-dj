@@ -110,3 +110,14 @@ h4 { margin: 16px 0 4px; }
 .dr-like:active { transform: scale(.96); }
 .dr-like.on { color: #ff7eb0; border-color: rgba(255,126,176,.5); background: rgba(255,126,176,.12); }
 .controls .icon svg { display: block; }
+.dr-talk { display: flex; flex-direction: column; align-items: center; width: 100%; padding-top: 6px; }
+.dr-wave.big { height: 120px; gap: 6px; margin: 28px 0 22px; }
+.dr-wave.big span { width: 6px; }
+.dr-djbig { max-width: 440px; font-size: 18px; line-height: 1.75; color: #eaf3ff; margin: 0 6px 16px; min-height: 56px; }
+.dr-topbar { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px 0 4px; min-height: 56px; }
+.dr-top-btn { min-width: 44px; min-height: 44px; background: none; border: none; color: var(--muted); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 30px; line-height: 1; position: relative; }
+.dr-top-btn:active { transform: scale(.9); }
+.dr-top-btn.liked { color: #ff7eb0; }
+.dr-heart-btn { gap: 3px; font-size: 18px; }
+.heart-count { min-width: 18px; height: 18px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; background: rgba(255,126,176,.16); border: 1px solid rgba(255,126,176,.32); color: #ffd3e4; font-size: 11px; font-weight: 800; line-height: 1; }
+.dr-prep { color: var(--muted); font-size: 14px; margin: 4px 0 16px; min-height: 56px; display: flex; align-items: center; }

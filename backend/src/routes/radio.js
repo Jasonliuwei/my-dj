@@ -2,9 +2,53 @@ import { Router } from 'express';
 import { nextTrack, feedback, SCENES } from '../services/recommender.js';
 import { djScript, djGreeting } from '../services/llm.js';
 import * as source from '../services/source.js';
-import { logEvent } from '../db.js';
+import { getFavoriteHeartMap, logEvent, topHeartFavorites } from '../db.js';
 
 const router = Router();
+
+function weightedPick(items) {
+  const total = items.reduce((sum, item) => sum + Math.max(1, item.heartCount || 1), 0);
+  let cursor = Math.random() * total;
+  for (const item of items) {
+    cursor -= Math.max(1, item.heartCount || 1);
+    if (cursor <= 0) return item;
+  }
+  return items[0];
+}
+
+async function playableHeartPicks(max = 2) {
+  const pool = topHeartFavorites(30);
+  const picks = [];
+  const remaining = [...pool];
+  while (remaining.length && picks.length < max) {
+    const chosen = weightedPick(remaining);
+    const idx = remaining.findIndex((t) => t.id === chosen.id);
+    if (idx >= 0) remaining.splice(idx, 1);
+    const url = await source.getUrl(chosen.id).catch(() => null);
+    if (url) picks.push({ ...chosen, url, fromHearts: true });
+  }
+  return picks;
+}
+
+async function buildDailyPlaylist(n) {
+  const heartTarget = n >= 6 ? 2 : 1;
+  const heartPicks = await playableHeartPicks(heartTarget);
+  const fill = await source.neteaseDailyPicks(n + heartPicks.length);
+  const seen = new Set();
+  const tracks = [];
+  for (const t of [...heartPicks, ...fill]) {
+    if (!t?.id || seen.has(String(t.id))) continue;
+    seen.add(String(t.id));
+    tracks.push(t);
+    if (tracks.length >= n) break;
+  }
+  const heartMap = getFavoriteHeartMap(tracks.map((t) => t.id));
+  return tracks.map((t) => ({
+    ...t,
+    heartCount: heartMap[String(t.id)] || t.heartCount || 0,
+    fromHearts: Boolean(t.fromHearts || heartMap[String(t.id)]),
+  }));
+}
 
 // 场景列表
 router.get('/scenes', (req, res) => {
@@ -47,11 +91,11 @@ router.get('/radio/next', async (req, res) => {
 router.get('/radio/daily', async (req, res) => {
   try {
     const n = Math.min(Math.max(parseInt(req.query.n || '6', 10), 1), 12);
-    const tracks = await source.neteaseDailyPicks(n);
+    const tracks = await buildDailyPlaylist(n);
     if (!tracks.length) {
       return res.status(404).json({
         error: 'no_tracks',
-        message: '没能从你的网易云收藏取到可播放的歌曲（请检查 Cookie 是否有效、收藏是否为空）',
+        message: '没能取到可播放的歌曲（请检查 Cookie 是否有效、收藏是否为空）',
       });
     }
     const greeting = await djGreeting({ count: tracks.length });
@@ -65,7 +109,12 @@ router.get('/radio/daily', async (req, res) => {
 // 单曲串场（今日歌单逐首播放时调用）
 router.get('/dj/intro', async (req, res) => {
   try {
-    const track = { id: req.query.id, title: req.query.title, artist: req.query.artist };
+    const track = {
+      id: req.query.id,
+      title: req.query.title,
+      artist: req.query.artist,
+      heartCount: parseInt(req.query.heartCount || '0', 10) || 0,
+    };
     const prevTrack = req.query.prevTitle
       ? { title: req.query.prevTitle, artist: req.query.prevArtist }
       : null;

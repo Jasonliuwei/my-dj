@@ -38,10 +38,6 @@ const IcHeart = ({ filled }) => (
     <path d="M12 20.3l-1.4-1.27C5.4 14.3 2 11.2 2 7.5 2 5 4 3 6.5 3c1.7 0 3.4.8 4.5 2.1C12.1 3.8 13.8 3 15.5 3 18 3 20 5 20 7.5c0 3.7-3.4 6.8-8.6 11.53z" />
   </svg>
 );
-const IcSource = () => (
-  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 3a9 9 0 00-9 9v6a2 2 0 002 2h1a2 2 0 002-2v-3a2 2 0 00-2-2H5v-1a7 7 0 0114 0v1h-1a2 2 0 00-2 2v3a2 2 0 002 2h1a2 2 0 002-2v-6a9 9 0 00-9-9z" /></svg>
-);
-
 export default function DailyRadio() {
   const [phase, setPhase] = useState('landing'); // landing | loading | onair | ended | error
   const [error, setError] = useState('');
@@ -51,7 +47,7 @@ export default function DailyRadio() {
   const [djText, setDjText] = useState('');
   const [speaking, setSpeaking] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [liked, setLiked] = useState(false);
+  const [heartCount, setHeartCount] = useState(0);
   const [progress, setProgress] = useState(0);
 
   const musicRef = useRef(null);
@@ -73,7 +69,7 @@ export default function DailyRadio() {
     if (!('mediaSession' in navigator) || !t) return;
     try {
       navigator.mediaSession.metadata = new window.MediaMetadata({
-        title: t.title || '', artist: t.artist || '', album: '网易云收藏',
+        title: t.title || '', artist: t.artist || '', album: '私人电台',
         artwork: t.cover ? [{ src: t.cover, sizes: '512x512', type: 'image/jpeg' }] : [],
       });
     } catch {}
@@ -169,7 +165,7 @@ export default function DailyRadio() {
     if (i >= arr.length) { setPhase('ended'); setPlaying(false); return; }
     const t = arr[i];
     const prev = i > 0 ? arr[i - 1] : null;
-    setIdx(i); setTrack(t); setLiked(false); setProgress(0); setDjText('');
+    setIdx(i); setTrack(t); setHeartCount(t.heartCount ?? 0); setProgress(0); setDjText('');
 
     const el = musicRef.current;
     if (el) el.pause(); // 停掉上一首
@@ -188,12 +184,12 @@ export default function DailyRadio() {
     // 顺手把下一首也预取好(为锁屏续播准备;网络只在前台可用)
     getIntro(i + 1, arr);
 
-    const startMusicNow = () => {
+    const startMusicNow = (underDj = false) => {
       if (!el || !t.url) return;
       // 已经在播这一首就别打断;但若上次 play() 被拒(元素仍是暂停)要允许重试,
       // 否则垫入定时器那次失败后,onended 会因 cur===id 直接 return,导致歌再也不播
       if (el.dataset.cur === t.id && !el.paused) return;
-      el.volume = 0.3;
+      el.volume = underDj ? 0.45 : 1.0;
       el.dataset.seg = 'song'; el.dataset.segIdx = String(i); // 给 onEnded 判段用
       el.dataset.cur = t.id;
       if (el.src !== t.url) el.src = t.url;
@@ -201,20 +197,20 @@ export default function DailyRadio() {
       setMeta(t);
     };
 
-    // 播 DJ 串场,并在结束前约 3.5s 让歌曲垫入(人声与音乐重叠,音量不变)
+    // 主持人尾部和歌曲轻微重叠，串场结束后恢复歌曲全音量。
     setSpeaking(true);
     await new Promise((resolve) => {
       let done = false;
       const timers = [];
       const fin = () => { if (done) return; done = true; timers.forEach(clearTimeout); resolve(); };
-      const startIfCurrent = () => { if (token === tokenRef.current) startMusicNow(); };
+      const startIfCurrent = (underDj = false) => { if (token === tokenRef.current) startMusicNow(underDj); };
       if (url) {
         const a = (djAudioRef.current = new Audio(url));
+        a.volume = 1.0;
         a.onloadedmetadata = () => {
           const d = a.duration;
           if (d && isFinite(d)) {
-            const lead = Math.max(0, (d - 3.5) * 1000);
-            timers.push(setTimeout(startIfCurrent, lead));
+            timers.push(setTimeout(() => startIfCurrent(true), Math.max(0, (d - 2.8) * 1000)));
           }
         };
         a.onended = () => { startIfCurrent(); fin(); };
@@ -280,7 +276,7 @@ export default function DailyRadio() {
     tokenRef.current++;   // 作废任何进行中的前台串场任务
     stopVoice();
     const t = arr[i];
-    setIdx(i); setTrack(t); setLiked(false); setProgress(0);
+    setIdx(i); setTrack(t); setHeartCount(t.heartCount ?? 0); setProgress(0);
     const el = musicRef.current;
     if (!el || !t.url) return;
     const entry = introCacheRef.current[i];
@@ -311,7 +307,19 @@ export default function DailyRadio() {
   const onPrev = () => { go(Math.max(0, idx - 1)); };
   const skipIntro = () => { stopVoice(); setSpeaking(false); const el = musicRef.current; if (el && track?.url) { if (!el.src) el.src = track.url; el.play().then(() => setPlaying(true)).catch(() => {}); } };
   const toggle = () => { const el = musicRef.current; if (!el) return; if (el.paused) { el.play(); setPlaying(true); } else { el.pause(); setPlaying(false); } };
-  const onLike = () => { if (!track) return; const v = !liked; setLiked(v); api.feedback(track, v ? 'like' : 'skip', 'daily').catch(() => {}); };
+  const onLike = async () => {
+    if (!track) return;
+    try {
+      const data = await api.heartTrack({ ...track, heartCount });
+      const next = Math.min(data.heartCount ?? heartCount + 1, 5);
+      setHeartCount(next);
+      const update = (t) => String(t.id) === String(track.id) ? { ...t, heartCount: next, fromHearts: next > 0 } : t;
+      setTrack((t) => t ? update(t) : t);
+      setTracks((arr) => arr.map(update));
+      tracksRef.current = tracksRef.current.map(update);
+      api.feedback(track, 'like', 'daily').catch(() => {});
+    } catch {}
+  };
   const onTime = () => { const el = musicRef.current; if (el && el.duration) setProgress((el.currentTime / el.duration) * 100); };
   const exit = () => { tokenRef.current++; stopVoice(); musicRef.current?.pause(); setPhase('landing'); setPlaying(false); setSpeaking(false); };
 
@@ -349,7 +357,7 @@ export default function DailyRadio() {
         <div className="dr-landing">
           <div className="dr-wave">{BARS.map((_, i) => <span key={i} style={{ animationDelay: `${i * 0.06}s` }} />)}</div>
           <div className="dr-hello">{greetByHour()}，Jason</div>
-          <div className="dr-sub">今天为你准备了一张歌单<br />全部来自你的网易云收藏</div>
+          <div className="dr-sub">今天为你准备了一张歌单<br />从你的收藏里挑了几首</div>
           <button className="dr-start" onClick={start}><span className="tri">▶</span> 开始今天的电台</button>
           <div className="dr-note">点开始,主持人先跟你聊两句,再一首首放给你听</div>
         </div>
@@ -384,11 +392,11 @@ export default function DailyRadio() {
         <div className="dr-onair">
           <div className="dr-topbar">
             <button className="dr-top-btn" onClick={exit} aria-label="返回">‹</button>
-            <span className="dr-source"><IcSource /> 网易云收藏</span>
             <span style={{ flex: 1 }} />
             {track && (
-              <button className={'dr-top-btn' + (liked ? ' liked' : '')} onClick={onLike} aria-label="喜欢">
-                <IcHeart filled={liked} />
+              <button className={'dr-top-btn dr-heart-btn' + (heartCount ? ' liked' : '')} onClick={onLike} aria-label="喜欢">
+                <IcHeart filled={heartCount > 0} />
+                {heartCount > 1 && <span className="heart-count">×{heartCount}</span>}
               </button>
             )}
           </div>

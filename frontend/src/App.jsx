@@ -32,7 +32,7 @@ export default function App() {
   const playMusic = useCallback((t) => {
     const el = musicRef.current;
     if (!el || !t?.url) return;
-    el.volume = 0.75;
+    el.volume = 1.0;
     el.src = t.url;
     el.play().then(() => setStatus('playing')).catch(() => setStatus('paused'));
   }, []);

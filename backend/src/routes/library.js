@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as source from '../services/source.js';
-import { addFavorite, removeFavorite, listFavorites, stats } from '../db.js';
+import { addFavorite, removeFavorite, listFavorites, stats, incrementHeart } from '../db.js';
 
 const router = Router();
 
@@ -27,6 +27,13 @@ router.post('/favorites', (req, res) => {
 router.delete('/favorites/:id', (req, res) => {
   removeFavorite(req.params.id);
   res.json({ ok: true });
+});
+
+router.post('/hearts', (req, res) => {
+  const t = req.body?.track;
+  if (!t?.id) return res.status(400).json({ error: 'bad_request' });
+  const heartCount = incrementHeart(t);
+  res.json({ ok: true, heartCount });
 });
 
 router.get('/stats', (req, res) => res.json(stats()));
