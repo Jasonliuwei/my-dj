@@ -125,14 +125,15 @@ h4 { margin: 16px 0 4px; }
 /* ===================== 黑胶唱机（今日电台） ===================== */
 .vr {
   --bg: #0c0a09; --cream: #efe6d6; --mut: #9c8a74; --line: #3d3329; --amber: #e3c58f; --red: #ff8a6a;
-  --d: min(78vw, 38vh, 300px); /* 唱盘直径，所有零件按它等比缩放 */
+  --d: min(82vw, 44vh, 340px); /* 唱盘直径，所有零件按它等比缩放 */
   position: fixed; inset: 0; overflow-y: auto; overflow-x: hidden; z-index: 10;
-  background: radial-gradient(120% 70% at 50% 0%, #211a14 0%, var(--bg) 62%);
+  background: var(--bg); /* 顶部保持纯黑,和手机状态栏连成一片 */
   color: var(--cream); font-family: Georgia, "Songti SC", "Noto Serif SC", "SimSun", serif;
 }
 .vr button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 .vr-amb { position: fixed; inset: 0; background-size: cover; background-position: center; filter: blur(50px) saturate(1.25) brightness(.62); transform: scale(1.35); opacity: .34; transition: background-image .8s; pointer-events: none;
-  -webkit-mask: linear-gradient(#000 10%, transparent 68%); mask: linear-gradient(#000 10%, transparent 68%); }
+  /* 封面的颜色只在唱机周围透出来,不碰屏幕顶部 */
+  -webkit-mask: radial-gradient(60% 34% at 50% 40%, #000, transparent); mask: radial-gradient(60% 34% at 50% 40%, #000, transparent); }
 .vr-col { position: relative; max-width: 440px; min-height: 100%; margin: 0 auto; padding: 8px 22px 22px; display: flex; flex-direction: column; }
 .vr-top, .vr-times, .vr-next, .vr-sheet, .vr-sub, .vr-start, .vr-ghost { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
 
@@ -172,9 +173,10 @@ h4 { margin: 16px 0 4px; }
 .vr .vr-link { margin-top: 14px; padding: 10px; font-size: 13px; color: var(--mut); text-decoration: underline; text-underline-offset: 3px; font-family: -apple-system, "PingFang SC", system-ui, sans-serif; }
 .vr-err { color: #ff9c8a; line-height: 1.6; font-family: system-ui, sans-serif; }
 
+html:has(.vr), body:has(.vr) { background: #0c0a09; }
+
 /* 播放页（静夜 Hi-Fi） */
 .vr-onair { flex: 1; display: flex; flex-direction: column; align-items: center; }
-.vr-lampglow { position: fixed; left: 50%; top: -190px; width: 520px; height: 520px; margin-left: -330px; border-radius: 50%; background: radial-gradient(circle, rgba(255,216,160,.17), transparent 64%); pointer-events: none; }
 .vr-top { width: 100%; display: flex; align-items: center; justify-content: space-between; min-height: 48px; }
 .vr .vr-tbtn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; line-height: 1; color: #8f7f6a; position: relative; }
 .vr .vr-heart.liked { color: #ff8a8a; }
@@ -187,7 +189,8 @@ h4 { margin: 16px 0 4px; }
 @keyframes vr-glow { 50% { opacity: .5; } }
 
 /* 唱机：转盘 → 频闪刻点 → 垫 → 唱片 → 高光 → 轴 → 唱臂 */
-.vr-deck { position: relative; width: var(--d); height: var(--d); margin-top: 4px; flex-shrink: 0; }
+/* 屏幕比内容高时,多出来的空白平分在唱机上方和底部"接下来"上方,不全堆在底下 */
+.vr-deck { position: relative; width: var(--d); height: var(--d); margin-top: auto; flex-shrink: 0; }
 .vr-floor { position: absolute; left: 8%; right: 8%; bottom: -5%; height: 13%; border-radius: 50%; background: rgba(0,0,0,.75); filter: blur(16px); }
 .vr-platter { position: absolute; inset: 0; border-radius: 50%;
   background: conic-gradient(from 40deg, #2a251f, #6f6252 8%, #2d2721 17%, #4d4338 30%, #221e19 44%, #74675a 58%, #2a251f 68%, #51473b 82%, #2a251f);

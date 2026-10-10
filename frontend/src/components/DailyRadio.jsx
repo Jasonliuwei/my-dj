@@ -607,7 +607,6 @@ export default function DailyRadio() {
 
         {phase === 'onair' && (
           <div className={'vr-onair' + (speaking ? ' talk' : '')}>
-            <div className="vr-lampglow" />
             <div className="vr-top">
               <button className="vr-tbtn" onClick={exit} aria-label="返回">‹</button>
               <span className={'vr-lamp' + (speaking ? ' on' : '')}><i /> ON AIR</span>
