@@ -2,25 +2,33 @@ import { Router } from 'express';
 import { nextTrack, feedback, SCENES } from '../services/recommender.js';
 import { djScript, djGreeting } from '../services/llm.js';
 import * as source from '../services/source.js';
-import { getFavoriteHeartMap, logEvent, topHeartFavorites } from '../db.js';
+import { getFavoriteHeartMap, logEvent, recentTrackIds, topHeartFavorites } from '../db.js';
 
 const router = Router();
 
+// 打过心的歌更容易被选中，但权重压得很平（1 心 1.5、5 心 3.5），不让心数最多的那几首每次都中
 function weightedPick(items) {
-  const total = items.reduce((sum, item) => sum + Math.max(1, item.heartCount || 1), 0);
+  const w = (item) => 1 + 0.5 * Math.max(0, item.heartCount || 0);
+  const total = items.reduce((sum, item) => sum + w(item), 0);
   let cursor = Math.random() * total;
   for (const item of items) {
-    cursor -= Math.max(1, item.heartCount || 1);
+    cursor -= w(item);
     if (cursor <= 0) return item;
   }
   return items[0];
 }
 
-async function playableHeartPicks(max = 2) {
-  const pool = topHeartFavorites(30);
+const pickOne = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+async function playableHeartPicks(max, recent) {
+  if (max <= 0) return [];
+  const all = topHeartFavorites(200);
+  // 最近几次电台放过的先不放；心标的歌本来就少、全被排除时再放开
+  const fresh = all.filter((t) => !recent.has(String(t.id)));
+  const remaining = fresh.length ? fresh : [...all];
   const picks = [];
-  const remaining = [...pool];
-  while (remaining.length && picks.length < max) {
+  let tries = 0;
+  while (remaining.length && picks.length < max && tries++ < 8) {
     const chosen = weightedPick(remaining);
     const idx = remaining.findIndex((t) => t.id === chosen.id);
     if (idx >= 0) remaining.splice(idx, 1);
@@ -30,20 +38,26 @@ async function playableHeartPicks(max = 2) {
   return picks;
 }
 
+// 今日歌单：主体从全部收藏里随机抽；打过心的歌只是"偶尔出现、几率更高"——
+// 每张歌单 0~2 首（平均 1 首），位置随机且不放第一首，避免每次一开场都是那几首老面孔
 async function buildDailyPlaylist(n) {
-  const heartTarget = n >= 6 ? 2 : 1;
-  const heartPicks = await playableHeartPicks(heartTarget);
-  const fill = await source.neteaseDailyPicks(n + heartPicks.length);
-  const seen = new Set();
-  const tracks = [];
-  for (const t of [...heartPicks, ...fill]) {
-    if (!t?.id || seen.has(String(t.id))) continue;
-    seen.add(String(t.id));
-    tracks.push(t);
-    if (tracks.length >= n) break;
+  const recent = new Set(recentTrackIds(30).map(String));
+  const heartTarget = n >= 6 ? pickOne([0, 1, 1, 2]) : pickOne([0, 1]);
+  const heartPicks = await playableHeartPicks(heartTarget, recent);
+  const heartIds = new Set(heartPicks.map((t) => String(t.id)));
+
+  const candidates = (await source.neteaseDailyPicks(n + 8)).filter((t) => t?.id && !heartIds.has(String(t.id)));
+  const freshFill = candidates.filter((t) => !recent.has(String(t.id)));
+  const fillPool = freshFill.length >= n - heartPicks.length ? freshFill : candidates;
+  const tracks = fillPool.slice(0, n - heartPicks.length);
+
+  for (const h of heartPicks) {
+    const at = tracks.length ? 1 + Math.floor(Math.random() * tracks.length) : 0; // 1..末尾，不占第一首
+    tracks.splice(at, 0, h);
   }
+
   const heartMap = getFavoriteHeartMap(tracks.map((t) => t.id));
-  return tracks.map((t) => ({
+  return tracks.slice(0, n).map((t) => ({
     ...t,
     heartCount: heartMap[String(t.id)] || t.heartCount || 0,
     fromHearts: Boolean(t.fromHearts || heartMap[String(t.id)]),
